@@ -36,7 +36,7 @@ Shader "Hidden/Raymarch" {
             sampler2D _MainTex;
             float4 _MainTex_TexelSize;
             float4 _MainTex_ST;
-            float4 _CameraWorldPos;
+            float _Radius;
 
             v2f vp(VertexData v) {
                 v2f o;
@@ -50,12 +50,8 @@ Shader "Hidden/Raymarch" {
             #define MIN_HIT_DISTANCE 0.001
             #define MAX_DISTANCE 1000
 
-            bool sphereHit(float3 pos) {
-                return distance(pos, 0) < 10;
-            }
-
             float GetDist(float3 pos) {
-                return length(pos - 0) - 5.0f;
+                return length(pos - 0) - _Radius;
             }
 
             float Raymarch(float3 rayOrigin, float3 rayDir) {
