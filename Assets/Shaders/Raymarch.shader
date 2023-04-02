@@ -101,7 +101,10 @@ Shader "Hidden/Raymarch" {
                     float2 e = float2(0.001f, 0);
                     float3 n = CalcNormal(origin + rayDir * d, d);
 
-                    return DotClamped(_WorldSpaceLightPos0, n);
+                    float ndotl = DotClamped(_WorldSpaceLightPos0.xyz, n) * 0.5f + 0.5f;
+                    ndotl *= ndotl;
+
+                    return ndotl;
                 } else {
                     return tex2D(_MainTex, i.uv);
                 }
