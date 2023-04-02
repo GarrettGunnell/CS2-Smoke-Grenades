@@ -20,8 +20,6 @@ Shader "Hidden/Raymarch" {
 
             #define M_PI 3.14159265358979323846264338327950288
 
-            #define MAX_DIST 100
-            #define SURF_DIST 0.001
 
             struct VertexData {
                 float4 vertex : POSITION;

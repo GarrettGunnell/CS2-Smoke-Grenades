@@ -1,0 +1,87 @@
+#pragma kernel CS_RayMarchSmoke
+#pragma kernel CS_Composite
+
+
+#include "UnityCG.cginc"
+#include "UnityStandardBRDF.cginc"
+
+#define STEPS 64
+#define MIN_HIT_DISTANCE 0.001
+#define MAX_DISTANCE 1000
+
+RWTexture2D<float4> _Smoke;
+RWTexture2D<float4> _ColorBuffer;
+
+float3 _CameraWorldPos;
+float3 _SunDirection;
+float4x4 _CameraToWorld;
+float4x4 _CameraInvProjection;
+float _BufferWidth;
+float _BufferHeight;
+
+float _Radius;
+
+float GetDist(float3 pos) {
+    return length(pos - 0) - _Radius;
+}
+
+float Raymarch(float3 rayOrigin, float3 rayDir) {
+    float distance = 0.0f;
+
+    for (int i = 0; i < STEPS; ++i) {
+        float3 pos = rayOrigin + distance * rayDir;
+
+        float distanceToObject = GetDist(pos);
+
+        if (distanceToObject < MIN_HIT_DISTANCE) return distance;
+        else if (dot(pos, float3(0, 1, 0)) + 0 < MIN_HIT_DISTANCE) return MAX_DISTANCE;
+        if (distance > MAX_DISTANCE) return MAX_DISTANCE;
+
+        distance += distanceToObject;
+    }
+
+    return MAX_DISTANCE;
+}
+
+float3 CalcNormal(float3 p) {
+    float2 e = float2(0.001, 0);
+    float3 n = GetDist(p) - float3(
+        GetDist(p - e.xyy), 
+        GetDist(p - e.yxy), 
+        GetDist(p - e.yyx)
+    );
+
+    return normalize(n);
+}
+
+[numthreads(8,8,1)]
+void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
+    float3 origin = _CameraWorldPos;
+    float2 uv =(id.xy / float2(_BufferWidth, _BufferHeight)) * 2 - 1;
+    float3 direction = mul(_CameraInvProjection, float4(uv, 0.0f, 1.0f)).xyz;
+    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
+
+    float d = Raymarch(origin, direction);
+
+    float4 col = 0.0f;
+    if (d < MAX_DISTANCE) {
+        float3 n = CalcNormal((origin + direction * d) - direction * 0.001);
+
+        float ndotl = DotClamped(-_SunDirection, n) * 0.5f + 0.5f;
+        ndotl *= ndotl;
+
+        col.rgb = ndotl;
+    }
+
+    //_Smoke[id.xy] = float4(uv, 0, 0);
+    _Smoke[id.xy] = col;
+}
+
+[numthreads(8, 8, 1)]
+void CS_Composite(uint3 id : SV_DISPATCHTHREADID) {
+    float4 smoke = _Smoke[id.xy];
+
+    if (any(smoke != 0))
+        _ColorBuffer[id.xy] = smoke;
+}
