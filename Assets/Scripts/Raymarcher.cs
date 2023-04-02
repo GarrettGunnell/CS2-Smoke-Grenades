@@ -4,7 +4,6 @@ using UnityEngine;
 
 [RequireComponent(typeof(Camera))]
 public class Raymarcher : MonoBehaviour {
-    private ComputeShader raymarchCompute;
 
     [Range(0.0f, 10.0f)]
     public float maxRadius = 3.0f;
@@ -14,32 +13,46 @@ public class Raymarcher : MonoBehaviour {
 
     public bool restartAnimation = false;
 
+    public enum ViewTexture {
+        Composite = 0,
+        SmokeAlbedo,
+        SmokeMask,
+        SmokeDepth
+    } public ViewTexture debugView;
+
     private GameObject sun;
     private Camera cam;
 
     private float radius = 0.0f;
 
-    private int raymarchSmokePass, compositePass;
+    private Material compositeMaterial;
+    private ComputeShader raymarchCompute;
+
+    private int raymarchSmokePass;
     
-    private RenderTexture smokeTex, outputTex;
+    private RenderTexture smokeMaskTex, smokeTex, smokeDepthTex;
 
     float Easing(float x) {
         return Mathf.Sin((radius * Mathf.PI) / 2);
     }
 
     void OnEnable() {
+        compositeMaterial = new Material(Shader.Find("Hidden/CompositeEffects"));
         raymarchCompute = (ComputeShader)Resources.Load("RenderSmoke");
 
         raymarchSmokePass = raymarchCompute.FindKernel("CS_RayMarchSmoke");
-        compositePass = raymarchCompute.FindKernel("CS_Composite");
 
         smokeTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
         smokeTex.enableRandomWrite = true;
         smokeTex.Create();
 
-        outputTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
-        outputTex.enableRandomWrite = true;
-        outputTex.Create();
+        smokeDepthTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
+        smokeDepthTex.enableRandomWrite = true;
+        smokeDepthTex.Create();
+
+        smokeMaskTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
+        smokeMaskTex.enableRandomWrite = true;
+        smokeMaskTex.Create();
 
         cam = GetComponent<Camera>();
         sun = GameObject.Find("Directional Light");
@@ -63,18 +76,20 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_BufferWidth", Screen.width);
         raymarchCompute.SetFloat("_BufferHeight", Screen.height);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
-
         raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
-
-        raymarchCompute.SetTexture(raymarchSmokePass, "_Smoke", smokeTex);
-
+        
+        // Render volumes
+        raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeTex", smokeTex);
+        raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeDepthTex", smokeDepthTex);
+        raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeMaskTex", smokeMaskTex);
         raymarchCompute.Dispatch(raymarchSmokePass, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
 
-        Graphics.Blit(source, outputTex);
-        raymarchCompute.SetTexture(compositePass, "_ColorBuffer", outputTex);
-        raymarchCompute.SetTexture(compositePass, "_Smoke", smokeTex);
-        raymarchCompute.Dispatch(compositePass, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
+        // Composite volumes with source buffer
+        compositeMaterial.SetTexture("_SmokeTex", smokeTex);
+        compositeMaterial.SetTexture("_SmokeDepthTex", smokeDepthTex);
+        compositeMaterial.SetTexture("_SmokeMaskTex", smokeMaskTex);
+        compositeMaterial.SetFloat("_DebugView", (int)debugView);
 
-        Graphics.Blit(outputTex, destination);
+        Graphics.Blit(source, destination, compositeMaterial);
     }
 }

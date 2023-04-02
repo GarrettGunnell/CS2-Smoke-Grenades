@@ -1,6 +1,4 @@
 #pragma kernel CS_RayMarchSmoke
-#pragma kernel CS_Composite
-
 
 #include "UnityCG.cginc"
 #include "UnityStandardBRDF.cginc"
@@ -9,8 +7,9 @@
 #define MIN_HIT_DISTANCE 0.001
 #define MAX_DISTANCE 1000
 
-RWTexture2D<float4> _Smoke;
-RWTexture2D<float4> _ColorBuffer;
+RWTexture2D<float4> _SmokeTex;
+RWTexture2D<float> _SmokeDepthTex;
+RWTexture2D<half> _SmokeMaskTex;
 
 float3 _CameraWorldPos;
 float3 _SunDirection;
@@ -35,7 +34,7 @@ float Raymarch(float3 rayOrigin, float3 rayDir) {
 
         if (distanceToObject < MIN_HIT_DISTANCE) return distance;
         else if (dot(pos, float3(0, 1, 0)) + 0 < MIN_HIT_DISTANCE) return MAX_DISTANCE;
-        if (distance > MAX_DISTANCE) return MAX_DISTANCE;
+        else if (distance > MAX_DISTANCE) return MAX_DISTANCE;
 
         distance += distanceToObject;
     }
@@ -57,7 +56,8 @@ float3 CalcNormal(float3 p) {
 [numthreads(8,8,1)]
 void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     float3 origin = _CameraWorldPos;
-    float2 uv =(id.xy / float2(_BufferWidth, _BufferHeight)) * 2 - 1;
+
+    float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight)) * 2 - 1;
     float3 direction = mul(_CameraInvProjection, float4(uv, 0.0f, 1.0f)).xyz;
     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
     direction = normalize(direction);
@@ -74,14 +74,8 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         col.rgb = ndotl;
     }
 
-    //_Smoke[id.xy] = float4(uv, 0, 0);
-    _Smoke[id.xy] = col;
-}
-
-[numthreads(8, 8, 1)]
-void CS_Composite(uint3 id : SV_DISPATCHTHREADID) {
-    float4 smoke = _Smoke[id.xy];
-
-    if (any(smoke != 0))
-        _ColorBuffer[id.xy] = smoke;
+    //_SmokeTex[id.xy] = float4(uv, 0, 0);
+    _SmokeTex[id.xy] = col;
+    _SmokeMaskTex[id.xy] = d < MAX_DISTANCE ? 0.5 : 0;
+    _SmokeDepthTex[id.xy] = d / MAX_DISTANCE;
 }
