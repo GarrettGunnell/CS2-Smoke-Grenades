@@ -2,17 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(Camera))]
 public class Raymarcher : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        
+    private Material raymarchMat;
+
+    void Start() {
+        raymarchMat = new Material(Shader.Find("Hidden/Raymarch"));
+        Debug.Log(this.transform.position.ToString());
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+    void OnRenderImage(RenderTexture source, RenderTexture destination) {
+        Graphics.Blit(source, destination, raymarchMat);
     }
 }
