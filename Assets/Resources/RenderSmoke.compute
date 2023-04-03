@@ -15,6 +15,7 @@ float3 _CameraWorldPos;
 float3 _SunDirection;
 float4x4 _CameraToWorld;
 float4x4 _CameraInvProjection;
+float4x4 _CameraViewProjection;
 float _BufferWidth;
 float _BufferHeight;
 
@@ -24,7 +25,7 @@ float GetDist(float3 pos) {
     return length(pos - 0) - _Radius;
 }
 
-float Raymarch(float3 rayOrigin, float3 rayDir) {
+float4 Raymarch(float3 rayOrigin, float3 rayDir) {
     float distance = 0.0f;
 
     for (int i = 0; i < STEPS; ++i) {
@@ -32,8 +33,7 @@ float Raymarch(float3 rayOrigin, float3 rayDir) {
 
         float distanceToObject = GetDist(pos);
 
-        if (distanceToObject < MIN_HIT_DISTANCE) return distance;
-        else if (dot(pos, float3(0, 1, 0)) + 0 < MIN_HIT_DISTANCE) return MAX_DISTANCE;
+        if (distanceToObject < MIN_HIT_DISTANCE) return float4(pos, distance);
         else if (distance > MAX_DISTANCE) return MAX_DISTANCE;
 
         distance += distanceToObject;
@@ -62,13 +62,13 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
     direction = normalize(direction);
 
-    float d = Raymarch(origin, direction);
+    float4 hitPos = Raymarch(origin, direction);
 
     float4 col = 0.0f;
-    if (d < MAX_DISTANCE) {
-        float3 n = CalcNormal((origin + direction * d) - direction * 0.001);
+    if (hitPos.w < MAX_DISTANCE) {
+        float3 n = -CalcNormal(hitPos.xyz);
 
-        float ndotl = DotClamped(-_SunDirection, n) * 0.5f + 0.5f;
+        float ndotl = DotClamped(_SunDirection, n) * 0.5f + 0.5f;
         ndotl *= ndotl;
 
         col.rgb = ndotl;
@@ -76,6 +76,9 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
     //_SmokeTex[id.xy] = float4(uv, 0, 0);
     _SmokeTex[id.xy] = col;
-    _SmokeMaskTex[id.xy] = d < MAX_DISTANCE ? 0.5 : 0;
-    _SmokeDepthTex[id.xy] = d / MAX_DISTANCE;
+    _SmokeMaskTex[id.xy] = hitPos.w < MAX_DISTANCE ? 1.0f : 0.0f;
+
+    float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));
+
+    _SmokeDepthTex[id.xy] = clipPos.z / clipPos.w;
 }

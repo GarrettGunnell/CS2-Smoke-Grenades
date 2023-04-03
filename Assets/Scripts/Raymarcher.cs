@@ -17,7 +17,8 @@ public class Raymarcher : MonoBehaviour {
         Composite = 0,
         SmokeAlbedo,
         SmokeMask,
-        SmokeDepth
+        SmokeDepth,
+        PolygonalDepth
     } public ViewTexture debugView;
 
     private GameObject sun;
@@ -70,9 +71,12 @@ public class Raymarcher : MonoBehaviour {
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination) {
+        Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(cam.projectionMatrix, false);
+
         raymarchCompute.SetVector("_CameraWorldPos", this.transform.position);
         raymarchCompute.SetMatrix("_CameraToWorld", cam.cameraToWorldMatrix);
-        raymarchCompute.SetMatrix("_CameraInvProjection", cam.projectionMatrix.inverse);
+        raymarchCompute.SetMatrix("_CameraInvProjection", projMatrix.inverse);
+        raymarchCompute.SetMatrix("_CameraViewProjection", projMatrix * cam.worldToCameraMatrix);
         raymarchCompute.SetFloat("_BufferWidth", Screen.width);
         raymarchCompute.SetFloat("_BufferHeight", Screen.height);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
