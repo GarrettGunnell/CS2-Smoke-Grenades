@@ -1,3 +1,5 @@
+#pragma kernel CS_GenerateNoise
+#pragma kernel CS_DebugNoise
 #pragma kernel CS_RayMarchSmoke
 
 #include "UnityCG.cginc"
@@ -6,6 +8,10 @@
 #define STEPS 256
 #define MIN_HIT_DISTANCE 0.001
 #define MAX_DISTANCE 1000
+
+RWTexture3D<half> _RWNoiseTex;
+Texture3D<half> _NoiseTex;
+SamplerState pointRepeatSampler;
 
 RWTexture2D<float4> _SmokeTex;
 RWTexture2D<float> _SmokeDepthTex;
@@ -21,6 +27,48 @@ float _BufferHeight;
 
 float _Radius;
 float4 _CubeParams;
+
+[numthreads(8,8,8)]
+void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
+    _RWNoiseTex[id.xyz] = length(id.xyz / 128.0f);
+}
+
+uint _DebugNoiseSlice;
+
+float RaymarchNoisePlane(float3 rayOrigin, float3 rayDir) {
+    float distance = 0.0f;
+
+    for (int i = 0; i < STEPS && distance < MAX_DISTANCE; ++i) {
+        float3 pos = rayOrigin + distance * rayDir;     
+        float3 q = abs(pos) - float3(1, 0, 1);
+        float distanceToObject = length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+
+        if (distanceToObject < MIN_HIT_DISTANCE) return distance;
+        distance += distanceToObject;
+    }
+
+    return MAX_DISTANCE;
+}
+
+[numthreads(8,8,1)]
+void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
+    float3 origin = _CameraWorldPos;
+
+    float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight)) * 2 - 1;
+    float3 direction = mul(_CameraInvProjection, float4(uv, 1.0f, 1.0f)).xyz;
+    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
+
+    float4 hitPos = RaymarchNoisePlane(origin, direction);
+
+    float4 col = 0.0f;
+    if (hitPos.w < MAX_DISTANCE) {
+        col.rgb = _NoiseTex.SampleLevel(pointRepeatSampler, float3(hitPos.xz / 128.0f, _DebugNoiseSlice / 128.0f), 0).r;
+    }
+
+    float3 uvw = saturate(float3((_DebugNoiseSlice - 1) / 128.0f, 0.0f, 0.0f));
+    _SmokeTex[id.xy] = _NoiseTex.SampleLevel(pointRepeatSampler, uvw, 0).r;;
+}
 
 float GetSphereDist(float3 pos) {
     return length(pos - 0) - _Radius;

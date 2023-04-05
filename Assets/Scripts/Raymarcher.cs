@@ -5,6 +5,17 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class Raymarcher : MonoBehaviour {
 
+    [Header("Noise Settings")]
+    [Space(5)]
+    public Vector3 noiseResolution = new Vector3(128, 128, 128);
+
+    public bool debugNoise = false;
+    
+    [Range(0, 128)]
+    public int debugNoiseSlice = 0;
+
+    [Header("SDF Settings")]
+    [Space(5)]
     public Vector4 cubeParams = new Vector4(0, 0, 0, 1);
 
     [Range(0.0f, 10.0f)]
@@ -31,19 +42,46 @@ public class Raymarcher : MonoBehaviour {
     private Material compositeMaterial;
     private ComputeShader raymarchCompute;
 
-    private int raymarchSmokePass;
+    private int generateNoisePass, debugNoisePass, raymarchSmokePass;
     
-    private RenderTexture smokeMaskTex, smokeTex, smokeDepthTex;
+    private RenderTexture noiseTex, smokeMaskTex, smokeTex, smokeDepthTex;
 
     float Easing(float x) {
         return Mathf.Sin((radius * Mathf.PI) / 2);
     }
 
-    void OnEnable() {
+    void UpdateNoise() {
+        raymarchCompute.SetTexture(generateNoisePass, "_RWNoiseTex", noiseTex);
+
+        raymarchCompute.Dispatch(generateNoisePass, Mathf.CeilToInt(noiseResolution.x / 8.0f), Mathf.CeilToInt(noiseResolution.y / 8.0f), Mathf.CeilToInt(noiseResolution.z / 8.0f));
+
+        raymarchCompute.SetTexture(raymarchSmokePass, "_NoiseTex", noiseTex);
+    }
+
+    void InitializeNoise() {
+        if (noiseTex != null) {
+            UpdateNoise();
+            return;
+        }
+        
+        noiseTex = new RenderTexture((int)noiseResolution.x, (int)noiseResolution.y, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
+        noiseTex.enableRandomWrite = true;
+        noiseTex.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
+        noiseTex.volumeDepth = (int)noiseResolution.z;
+        noiseTex.Create();
+
+        UpdateNoise();
+    }
+
+    void InitializeVariables() {
         compositeMaterial = new Material(Shader.Find("Hidden/CompositeEffects"));
         raymarchCompute = (ComputeShader)Resources.Load("RenderSmoke");
 
+        generateNoisePass = raymarchCompute.FindKernel("CS_GenerateNoise");
+        debugNoisePass = raymarchCompute.FindKernel("CS_DebugNoise");
         raymarchSmokePass = raymarchCompute.FindKernel("CS_RayMarchSmoke");
+
+        InitializeNoise();
 
         smokeTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
         smokeTex.enableRandomWrite = true;
@@ -59,6 +97,11 @@ public class Raymarcher : MonoBehaviour {
 
         cam = GetComponent<Camera>();
         sun = GameObject.Find("Directional Light");
+
+    }
+
+    void OnEnable() {
+        InitializeVariables();
     }
 
     void Update() {
@@ -84,6 +127,16 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
         raymarchCompute.SetVector("_CubeParams", cubeParams);
+
+        if (debugNoise) {
+            raymarchCompute.SetTexture(debugNoisePass, "_NoiseTex", noiseTex);
+            raymarchCompute.SetTexture(debugNoisePass, "_SmokeTex", smokeTex);
+            raymarchCompute.SetInt("_DebugNoiseSlice", debugNoiseSlice);
+            raymarchCompute.Dispatch(debugNoisePass, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
+
+            Graphics.Blit(smokeTex, destination);
+            return;
+        }
         
         // Render volumes
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeTex", smokeTex);
