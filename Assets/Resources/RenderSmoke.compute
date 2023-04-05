@@ -3,7 +3,7 @@
 #include "UnityCG.cginc"
 #include "UnityStandardBRDF.cginc"
 
-#define STEPS 64
+#define STEPS 256
 #define MIN_HIT_DISTANCE 0.001
 #define MAX_DISTANCE 1000
 
@@ -20,22 +20,47 @@ float _BufferWidth;
 float _BufferHeight;
 
 float _Radius;
+float4 _CubeParams;
 
-float GetDist(float3 pos) {
+float GetSphereDist(float3 pos) {
     return length(pos - 0) - _Radius;
 }
 
-float4 Raymarch(float3 rayOrigin, float3 rayDir) {
+float GetCubeDist(float3 pos) {
+    float3 q = abs(pos - _CubeParams.xyz) - _CubeParams.w;
+    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
+
+float GetDist(float3 pos) {
+    return max(GetSphereDist(pos), -GetCubeDist(pos));
+}
+
+float RaymarchObstacles(float3 rayOrigin, float3 rayDir) {
     float distance = 0.0f;
 
-    for (int i = 0; i < STEPS; ++i) {
+    for (int i = 0; i < STEPS && distance < MAX_DISTANCE; ++i) {
+        float3 pos = rayOrigin + distance * rayDir;
+        float distanceToObject = GetCubeDist(pos);
+        if (distanceToObject < MIN_HIT_DISTANCE) return distance;
+        distance += distanceToObject;
+    }
+
+    return MAX_DISTANCE;
+}
+
+float4 RaymarchSmokeMesh(float3 rayOrigin, float3 rayDir) {
+    float distance = 0.0f;
+
+    for (int i = 0; i < STEPS && distance < MAX_DISTANCE; ++i) {
         float3 pos = rayOrigin + distance * rayDir;
 
-        float distanceToObject = GetDist(pos);
+        float distanceToObject = GetSphereDist(pos);
 
-        if (distanceToObject < MIN_HIT_DISTANCE) return float4(pos, distance);
-        else if (distance > MAX_DISTANCE) return MAX_DISTANCE;
-
+        if (distanceToObject < MIN_HIT_DISTANCE) {
+            if (RaymarchObstacles(pos, 0 - pos) < MAX_DISTANCE) return MAX_DISTANCE;
+            
+            return float4(pos, distance);
+        }
         distance += distanceToObject;
     }
 
@@ -44,10 +69,10 @@ float4 Raymarch(float3 rayOrigin, float3 rayDir) {
 
 float3 CalcNormal(float3 p) {
     float2 e = float2(0.001, 0);
-    float3 n = GetDist(p) - float3(
-        GetDist(p - e.xyy), 
-        GetDist(p - e.yxy), 
-        GetDist(p - e.yyx)
+    float3 n = GetSphereDist(p) - float3(
+        GetSphereDist(p - e.xyy), 
+        GetSphereDist(p - e.yxy), 
+        GetSphereDist(p - e.yyx)
     );
 
     return normalize(n);
@@ -58,11 +83,11 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     float3 origin = _CameraWorldPos;
 
     float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight)) * 2 - 1;
-    float3 direction = mul(_CameraInvProjection, float4(uv, 0.0f, 1.0f)).xyz;
+    float3 direction = mul(_CameraInvProjection, float4(uv, 1.0f, 1.0f)).xyz;
     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
     direction = normalize(direction);
 
-    float4 hitPos = Raymarch(origin, direction);
+    float4 hitPos = RaymarchSmokeMesh(origin, direction);
 
     float4 col = 0.0f;
     if (hitPos.w < MAX_DISTANCE) {

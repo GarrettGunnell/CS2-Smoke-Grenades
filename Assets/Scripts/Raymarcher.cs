@@ -5,6 +5,8 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class Raymarcher : MonoBehaviour {
 
+    public Vector4 cubeParams = new Vector4(0, 0, 0, 1);
+
     [Range(0.0f, 10.0f)]
     public float maxRadius = 3.0f;
 
@@ -81,6 +83,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_BufferHeight", Screen.height);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
+        raymarchCompute.SetVector("_CubeParams", cubeParams);
         
         // Render volumes
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeTex", smokeTex);
