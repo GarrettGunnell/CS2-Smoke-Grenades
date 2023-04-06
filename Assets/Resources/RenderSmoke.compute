@@ -11,7 +11,7 @@
 
 RWTexture3D<half> _RWNoiseTex;
 Texture3D<half> _NoiseTex;
-SamplerState pointRepeatSampler;
+SamplerState point_repeat_sampler;
 
 RWTexture2D<float4> _SmokeTex;
 RWTexture2D<float> _SmokeDepthTex;
@@ -34,17 +34,22 @@ void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
 }
 
 uint _DebugNoiseSlice;
+uint _DebugAxis;
 
 float RaymarchNoisePlane(float3 rayOrigin, float3 rayDir) {
     float distance = 0.0f;
 
+    float3 n = 0;
+    if (_DebugAxis == 0) n.x = 1;
+    if (_DebugAxis == 1) n.y = 1;
+    if (_DebugAxis == 2) n.z = 1;
+
     for (int i = 0; i < STEPS && distance < MAX_DISTANCE; ++i) {
         float3 pos = rayOrigin + distance * rayDir;     
-        float3 q = abs(pos) - float3(1, 0, 1);
-        float distanceToObject = length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+        float distanceToObject = max(dot(pos, -n), dot(pos, n));
+        distance += distanceToObject;
 
         if (distanceToObject < MIN_HIT_DISTANCE) return distance;
-        distance += distanceToObject;
     }
 
     return MAX_DISTANCE;
@@ -59,15 +64,23 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
     direction = normalize(direction);
 
-    float4 hitPos = RaymarchNoisePlane(origin, direction);
+    float d = RaymarchNoisePlane(origin, direction);
 
     float4 col = 0.0f;
-    if (hitPos.w < MAX_DISTANCE) {
-        col.rgb = _NoiseTex.SampleLevel(pointRepeatSampler, float3(hitPos.xz / 128.0f, _DebugNoiseSlice / 128.0f), 0).r;
+    if (d < MAX_DISTANCE) {
+        float3 pos = origin + direction * d;
+
+        if (all(pos > -1) && all(pos < 1)) {
+            pos = pos * 0.5f + 0.5f;
+            if (_DebugAxis == 0) pos.x = (_DebugNoiseSlice - 1) / 128.0f;
+            if (_DebugAxis == 1) pos.y = (_DebugNoiseSlice - 1) / 128.0f;
+            if (_DebugAxis == 2) pos.z = (_DebugNoiseSlice - 1) / 128.0f;
+
+            col.rgb = _NoiseTex.SampleLevel(point_repeat_sampler, pos, 0).r;
+        }
     }
 
-    float3 uvw = saturate(float3((_DebugNoiseSlice - 1) / 128.0f, 0.0f, 0.0f));
-    _SmokeTex[id.xy] = _NoiseTex.SampleLevel(pointRepeatSampler, uvw, 0).r;;
+    _SmokeTex[id.xy] = col;
 }
 
 float GetSphereDist(float3 pos) {
