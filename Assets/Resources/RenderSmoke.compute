@@ -4,6 +4,7 @@
 
 #include "UnityCG.cginc"
 #include "UnityStandardBRDF.cginc"
+#include "Packages/jp.keijiro.noiseshader/Shader/ClassicNoise3D.hlsl"
 
 #define STEPS 256
 #define MIN_HIT_DISTANCE 0.001
@@ -11,7 +12,7 @@
 
 RWTexture3D<half> _RWNoiseTex;
 Texture3D<half> _NoiseTex;
-SamplerState point_repeat_sampler;
+SamplerState linear_repeat_sampler;
 
 RWTexture2D<float4> _SmokeTex;
 RWTexture2D<float> _SmokeDepthTex;
@@ -30,7 +31,9 @@ float4 _CubeParams;
 
 [numthreads(8,8,8)]
 void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
-    _RWNoiseTex[id.xyz] = length(id.xyz / 128.0f);
+    float3 pos = id * 2 - 1;
+    float _Frequency = 0.5f;
+    _RWNoiseTex[id.xyz] = PeriodicNoise(pos * _Frequency, float3(64 * _Frequency, 64 * _Frequency, 64 * _Frequency));
 }
 
 uint _DebugNoiseSlice;
@@ -77,7 +80,7 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
             if (_DebugAxis == 1) pos.y = (_DebugNoiseSlice - 1) / 128.0f;
             if (_DebugAxis == 2) pos.z = (_DebugNoiseSlice - 1) / 128.0f;
 
-            col.rgb = _NoiseTex.SampleLevel(point_repeat_sampler, pos, 0).r;
+            col.rgb = _NoiseTex.SampleLevel(linear_repeat_sampler, pos, 0).r;
         }
     }
 

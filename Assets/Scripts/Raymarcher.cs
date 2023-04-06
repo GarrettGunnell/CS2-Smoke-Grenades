@@ -9,6 +9,8 @@ public class Raymarcher : MonoBehaviour {
     [Space(5)]
     public Vector3 noiseResolution = new Vector3(128, 128, 128);
 
+    public bool updateNoise = false;
+
     public bool debugNoise = false;
 
     public bool debugTiledNoise = false;
@@ -120,6 +122,11 @@ public class Raymarcher : MonoBehaviour {
         if (restartAnimation) {
             radius = 0.0f;
             restartAnimation = false;
+        }
+
+        if (updateNoise) {
+            UpdateNoise();
+            updateNoise = false;
         }
     }
 
