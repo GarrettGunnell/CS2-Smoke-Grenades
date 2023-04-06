@@ -29,11 +29,28 @@ float _BufferHeight;
 float _Radius;
 float4 _CubeParams;
 
+int _Octaves;
+float _Frequency, _Amplitude, _Persistance, _Roughness, _Period;
+
 [numthreads(8,8,8)]
 void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
-    float3 pos = id * 2 - 1;
-    float _Frequency = 0.5f;
-    _RWNoiseTex[id.xyz] = PeriodicNoise(pos * _Frequency, float3(64 * _Frequency, 64 * _Frequency, 64 * _Frequency));
+    float3 pos = id * _Frequency;
+
+    float _H = 1.0f;
+
+    float n = 0.0f;
+
+    float G = exp2(-_Persistance);
+    float f = 1.0f;
+    float a = 1.0f;
+
+    for (int i = 0; i < _Octaves; ++i) {
+        n += a * PeriodicNoise(pos * f, _Period * f) * _Amplitude;
+        f *= _Roughness;
+        a *= G;
+    }
+
+    _RWNoiseTex[id.xyz] = saturate((n + _Amplitude) * 0.5f);
 }
 
 uint _DebugNoiseSlice;

@@ -881,7 +881,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea8210bf91c402945aa5ce5f8345d2ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cubeParams: {x: -3, y: 1, z: -0.7, w: 3}
+  noiseResolution: {x: 128, y: 128, z: 128}
+  octaves: 1
+  frequency: 0.1
+  amplitude: 1
+  persistance: 1
+  roughness: 2
+  period: 64
+  updateNoise: 0
+  debugNoise: 1
+  debugTiledNoise: 1
+  debugNoiseAxis: 1
+  debugNoiseSlice: 0
+  cubeParams: {x: -3, y: 1, z: -0.7, w: 1}
   maxRadius: 3
   growthSpeed: 1
   restartAnimation: 0

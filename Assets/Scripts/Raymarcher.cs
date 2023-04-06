@@ -9,6 +9,24 @@ public class Raymarcher : MonoBehaviour {
     [Space(5)]
     public Vector3 noiseResolution = new Vector3(128, 128, 128);
 
+    [Range(1, 16)]
+    public int octaves = 1;
+
+    [Range(0.01f, 2.0f)]
+    public float frequency = 0.1f;
+    
+    [Range(0.01f, 2.0f)]
+    public float amplitude = 1.0f;
+
+    [Range(0.01f, 2.0f)]
+    public float persistance = 1.0f;
+
+    [Range(0.01f, 3.0f)]
+    public float roughness = 2.0f;
+    
+    [Range(0.01f, 100.0f)]
+    public float period = 64.0f;
+
     public bool updateNoise = false;
 
     public bool debugNoise = false;
@@ -62,6 +80,12 @@ public class Raymarcher : MonoBehaviour {
 
     void UpdateNoise() {
         raymarchCompute.SetTexture(generateNoisePass, "_RWNoiseTex", noiseTex);
+        raymarchCompute.SetInt("_Octaves", octaves);
+        raymarchCompute.SetFloat("_Frequency", frequency);
+        raymarchCompute.SetFloat("_Amplitude", amplitude);
+        raymarchCompute.SetFloat("_Persistance", persistance);
+        raymarchCompute.SetFloat("_Roughness", roughness);
+        raymarchCompute.SetFloat("_Period", period);
 
         raymarchCompute.Dispatch(generateNoisePass, Mathf.CeilToInt(noiseResolution.x / 8.0f), Mathf.CeilToInt(noiseResolution.y / 8.0f), Mathf.CeilToInt(noiseResolution.z / 8.0f));
 
@@ -126,7 +150,6 @@ public class Raymarcher : MonoBehaviour {
 
         if (updateNoise) {
             UpdateNoise();
-            updateNoise = false;
         }
     }
 
