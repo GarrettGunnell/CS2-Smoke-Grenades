@@ -35,6 +35,7 @@ void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
 
 uint _DebugNoiseSlice;
 uint _DebugAxis;
+uint _DebugTiledNoise;
 
 float RaymarchNoisePlane(float3 rayOrigin, float3 rayDir) {
     float distance = 0.0f;
@@ -70,7 +71,7 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
     if (d < MAX_DISTANCE) {
         float3 pos = origin + direction * d;
 
-        if (all(pos > -1) && all(pos < 1)) {
+        if ((all(pos > -1) && all(pos < 1)) || _DebugTiledNoise) {
             pos = pos * 0.5f + 0.5f;
             if (_DebugAxis == 0) pos.x = (_DebugNoiseSlice - 1) / 128.0f;
             if (_DebugAxis == 1) pos.y = (_DebugNoiseSlice - 1) / 128.0f;

@@ -11,6 +11,8 @@ public class Raymarcher : MonoBehaviour {
 
     public bool debugNoise = false;
 
+    public bool debugTiledNoise = false;
+
     public enum DebugAxis {
         X = 0,
         Y,
@@ -139,6 +141,7 @@ public class Raymarcher : MonoBehaviour {
             raymarchCompute.SetTexture(debugNoisePass, "_SmokeTex", smokeTex);
             raymarchCompute.SetInt("_DebugNoiseSlice", debugNoiseSlice);
             raymarchCompute.SetInt("_DebugAxis", (int)debugNoiseAxis);
+            raymarchCompute.SetInt("_DebugTiledNoise", debugTiledNoise ? 1 : 0);
             raymarchCompute.Dispatch(debugNoisePass, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
 
             Graphics.Blit(smokeTex, destination);
