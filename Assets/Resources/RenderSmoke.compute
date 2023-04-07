@@ -32,6 +32,7 @@ float4 _CubeParams;
 
 int _StepCount;
 float _StepSize;
+float _SmokeSize;
 
 int _Octaves;
 float _Persistance, _Amplitude, _Warp, _Add;
@@ -179,7 +180,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         float stepSize = _StepSize;
 
         for (int i = 0; i < maxSteps; ++i) {
-            float n = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, curPos / 8.0f, 0).r);
+            float n = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, curPos / _SmokeSize, 0).r);
             accumulatedNoise += n * stepSize;
             curPos += direction * stepSize;
             if (GetDist(curPos) > MIN_HIT_DISTANCE) break;

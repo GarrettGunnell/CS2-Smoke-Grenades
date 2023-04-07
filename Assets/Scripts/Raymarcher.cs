@@ -79,6 +79,9 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.0f, 1.0f)]
     public float stepSize = 0.05f;
 
+    [Range(0.01f, 64.0f)]
+    public float smokeSize = 32.0f;
+
     public enum ViewTexture {
         Composite = 0,
         SmokeAlbedo,
@@ -191,6 +194,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_BufferWidth", Screen.width);
         raymarchCompute.SetFloat("_BufferHeight", Screen.height);
         raymarchCompute.SetFloat("_StepSize", stepSize);
+        raymarchCompute.SetFloat("_SmokeSize", smokeSize);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetInt("_Shape", (int)sdfShape);
         raymarchCompute.SetInt("_StepCount", stepCount);
