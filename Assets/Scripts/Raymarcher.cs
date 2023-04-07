@@ -12,20 +12,29 @@ public class Raymarcher : MonoBehaviour {
     [Range(1, 16)]
     public int octaves = 1;
 
-    [Range(0.01f, 2.0f)]
-    public float frequency = 0.1f;
-    
-    [Range(0.01f, 2.0f)]
+    [Range(1, 64)]
+    public int cellSize = 16;
+
+    [Range(1, 16)]
+    public int frequency = 1;
+
+    [Range(0.1f, 4.0f)]
     public float amplitude = 1.0f;
 
-    [Range(0.01f, 2.0f)]
+    [Range(0.01f, 1.0f)]
     public float persistance = 1.0f;
 
-    [Range(0.01f, 3.0f)]
-    public float roughness = 2.0f;
+    [Range(1, 10)]
+    public int roughness = 2;
+    
+    [Range(0.0f, 2.0f)]
+    public float warp = 0.0f;
+
+    [Range(0.0f, 2.0f)]
+    public float add = 0.0f;
     
     [Range(0.01f, 100.0f)]
-    public float period = 64.0f;
+    public int period = 64;
 
     public bool updateNoise = false;
 
@@ -81,11 +90,14 @@ public class Raymarcher : MonoBehaviour {
     void UpdateNoise() {
         raymarchCompute.SetTexture(generateNoisePass, "_RWNoiseTex", noiseTex);
         raymarchCompute.SetInt("_Octaves", octaves);
-        raymarchCompute.SetFloat("_Frequency", frequency);
-        raymarchCompute.SetFloat("_Amplitude", amplitude);
+        raymarchCompute.SetInt("_CellSize", cellSize);
         raymarchCompute.SetFloat("_Persistance", persistance);
-        raymarchCompute.SetFloat("_Roughness", roughness);
-        raymarchCompute.SetFloat("_Period", period);
+        raymarchCompute.SetInt("_Frequency", frequency - 1);
+        raymarchCompute.SetFloat("_Amplitude", amplitude);
+        raymarchCompute.SetFloat("_Warp", warp);
+        raymarchCompute.SetFloat("_Add", add);
+        raymarchCompute.SetInt("_Roughness", roughness);
+        raymarchCompute.SetInt("_Period", period);
 
         raymarchCompute.Dispatch(generateNoisePass, Mathf.CeilToInt(noiseResolution.x / 8.0f), Mathf.CeilToInt(noiseResolution.y / 8.0f), Mathf.CeilToInt(noiseResolution.z / 8.0f));
 
@@ -172,6 +184,7 @@ public class Raymarcher : MonoBehaviour {
             raymarchCompute.SetInt("_DebugNoiseSlice", debugNoiseSlice);
             raymarchCompute.SetInt("_DebugAxis", (int)debugNoiseAxis);
             raymarchCompute.SetInt("_DebugTiledNoise", debugTiledNoise ? 1 : 0);
+
             raymarchCompute.Dispatch(debugNoisePass, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
 
             Graphics.Blit(smokeTex, destination);

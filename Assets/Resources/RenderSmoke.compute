@@ -30,27 +30,28 @@ float _Radius;
 float4 _CubeParams;
 
 int _Octaves;
-float _Frequency, _Amplitude, _Persistance, _Roughness, _Period;
+float _Persistance, _Amplitude, _Warp, _Add;
+int _CellSize, _Roughness, _Period, _Frequency;
 
 [numthreads(8,8,8)]
 void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
-    float3 pos = id * _Frequency;
-
-    float _H = 1.0f;
+    //Convert to UV
+    float3 pos = float3(id.xyz) / 128.0f;
+    pos *= _CellSize;
 
     float n = 0.0f;
 
     float G = exp2(-_Persistance);
-    float f = 1.0f;
-    float a = 1.0f;
+    float f = rcp(exp2(_Frequency));
+    float a = _Amplitude;
 
     for (int i = 0; i < _Octaves; ++i) {
-        n += a * PeriodicNoise(pos * f, _Period * f) * _Amplitude;
+        n += a * PeriodicNoise(pos.xyz * f + i * _Warp, _Period * f);
         f *= _Roughness;
         a *= G;
     }
 
-    _RWNoiseTex[id.xyz] = saturate((n + _Amplitude) * 0.5f);
+    _RWNoiseTex[id.xyz] = saturate(n + _Add);
 }
 
 uint _DebugNoiseSlice;
@@ -92,7 +93,7 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
         float3 pos = origin + direction * d;
 
         if ((all(pos > -1) && all(pos < 1)) || _DebugTiledNoise) {
-            pos = pos * 0.5f + 0.5f;
+            pos /= _CellSize;
             if (_DebugAxis == 0) pos.x = (_DebugNoiseSlice - 1) / 128.0f;
             if (_DebugAxis == 1) pos.y = (_DebugNoiseSlice - 1) / 128.0f;
             if (_DebugAxis == 2) pos.z = (_DebugNoiseSlice - 1) / 128.0f;
@@ -100,7 +101,20 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
             col.rgb = _NoiseTex.SampleLevel(linear_repeat_sampler, pos, 0).r;
         }
     }
+    /*
+    float3 uvw = float3(id.xy * _Frequency, 0);
+    float n = 0.0f;
 
+    float G = exp2(-_Persistance);
+    float f = 1.0f;
+    float a = 1.0f;
+
+    for (int i = 0; i < _Octaves; ++i) {
+        n += a * PeriodicNoise(uvw * f, _Period * f) * _Amplitude;
+        f *= _Roughness;
+        a *= G;
+    }
+    */
     _SmokeTex[id.xy] = col;
 }
 
