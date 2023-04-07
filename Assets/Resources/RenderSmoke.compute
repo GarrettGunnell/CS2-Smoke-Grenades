@@ -26,8 +26,12 @@ float4x4 _CameraViewProjection;
 float _BufferWidth;
 float _BufferHeight;
 
+uint _Shape;
 float _Radius;
 float4 _CubeParams;
+
+int _StepCount;
+float _StepSize;
 
 int _Octaves;
 float _Persistance, _Amplitude, _Warp, _Add;
@@ -101,20 +105,7 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
             col.rgb = _NoiseTex.SampleLevel(linear_repeat_sampler, pos, 0).r;
         }
     }
-    /*
-    float3 uvw = float3(id.xy * _Frequency, 0);
-    float n = 0.0f;
 
-    float G = exp2(-_Persistance);
-    float f = 1.0f;
-    float a = 1.0f;
-
-    for (int i = 0; i < _Octaves; ++i) {
-        n += a * PeriodicNoise(uvw * f, _Period * f) * _Amplitude;
-        f *= _Roughness;
-        a *= G;
-    }
-    */
     _SmokeTex[id.xy] = col;
 }
 
@@ -128,21 +119,12 @@ float GetCubeDist(float3 pos) {
 }
 
 float GetDist(float3 pos) {
-    return max(GetSphereDist(pos), -GetCubeDist(pos));
-}
-
-float RaymarchObstacles(float3 rayOrigin, float3 rayDir) {
-    float distance = 0.0f;
-
-    for (int i = 0; i < STEPS && distance < MAX_DISTANCE; ++i) {
-        float3 pos = rayOrigin + distance * rayDir;
-        float distanceToObject = GetCubeDist(pos);
-        if (distanceToObject < MIN_HIT_DISTANCE) return distance;
-        distance += distanceToObject;
-    }
+    if (_Shape == 0) return GetSphereDist(pos);
+    if (_Shape == 1) return GetCubeDist(pos);
 
     return MAX_DISTANCE;
 }
+
 
 float4 RaymarchSmokeMesh(float3 rayOrigin, float3 rayDir) {
     float distance = 0.0f;
@@ -150,14 +132,11 @@ float4 RaymarchSmokeMesh(float3 rayOrigin, float3 rayDir) {
     for (int i = 0; i < STEPS && distance < MAX_DISTANCE; ++i) {
         float3 pos = rayOrigin + distance * rayDir;
 
-        float distanceToObject = GetSphereDist(pos);
-
-        if (distanceToObject < MIN_HIT_DISTANCE) {
-            if (RaymarchObstacles(pos, 0 - pos) < MAX_DISTANCE) return MAX_DISTANCE;
-            
-            return float4(pos, distance);
-        }
+        float distanceToObject = GetDist(pos);
         distance += distanceToObject;
+
+        if (distanceToObject < MIN_HIT_DISTANCE)
+            return float4(pos, distance);
     }
 
     return MAX_DISTANCE;
@@ -165,10 +144,10 @@ float4 RaymarchSmokeMesh(float3 rayOrigin, float3 rayDir) {
 
 float3 CalcNormal(float3 p) {
     float2 e = float2(0.001, 0);
-    float3 n = GetSphereDist(p) - float3(
-        GetSphereDist(p - e.xyy), 
-        GetSphereDist(p - e.yxy), 
-        GetSphereDist(p - e.yyx)
+    float3 n = GetDist(p) - float3(
+        GetDist(p - e.xyy), 
+        GetDist(p - e.yxy), 
+        GetDist(p - e.yyx)
     );
 
     return normalize(n);
@@ -186,18 +165,30 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     float4 hitPos = RaymarchSmokeMesh(origin, direction);
 
     float4 col = 0.0f;
+    float accumulatedNoise = 0.0f;
     if (hitPos.w < MAX_DISTANCE) {
         float3 n = -CalcNormal(hitPos.xyz);
 
         float ndotl = DotClamped(_SunDirection, n) * 0.5f + 0.5f;
         ndotl *= ndotl;
 
-        col.rgb = ndotl;
+        col.rgb = 1;
+
+        int maxSteps = _StepCount;
+        float3 curPos = hitPos.xyz;
+        float stepSize = _StepSize;
+
+        for (int i = 0; i < maxSteps; ++i) {
+            float n = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, curPos / 8.0f, 0).r);
+            accumulatedNoise += n * stepSize;
+            curPos += direction * stepSize;
+            if (GetDist(curPos) > MIN_HIT_DISTANCE) break;
+        }
     }
 
     //_SmokeTex[id.xy] = float4(uv, 0, 0);
     _SmokeTex[id.xy] = col;
-    _SmokeMaskTex[id.xy] = hitPos.w < MAX_DISTANCE ? 1.0f : 0.0f;
+    _SmokeMaskTex[id.xy] = saturate(accumulatedNoise);
 
     float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));
 

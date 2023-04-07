@@ -51,8 +51,15 @@ public class Raymarcher : MonoBehaviour {
     [Range(0, 128)]
     public int debugNoiseSlice = 0;
 
+
+    public enum Shape {
+        Sphere = 0,
+        Cube
+    } 
     [Header("SDF Settings")]
     [Space(5)]
+    public Shape sdfShape;
+
     public Vector4 cubeParams = new Vector4(0, 0, 0, 1);
 
     [Range(0.0f, 10.0f)]
@@ -62,6 +69,15 @@ public class Raymarcher : MonoBehaviour {
     public float growthSpeed = 1.0f;
 
     public bool restartAnimation = false;
+
+    [Header("Smoke Settings")]
+    [Space(5)]
+
+    [Range(2, 128)]
+    public int stepCount = 64;
+
+    [Range(0.0f, 1.0f)]
+    public float stepSize = 0.05f;
 
     public enum ViewTexture {
         Composite = 0,
@@ -174,7 +190,10 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetMatrix("_CameraViewProjection", projMatrix * cam.worldToCameraMatrix);
         raymarchCompute.SetFloat("_BufferWidth", Screen.width);
         raymarchCompute.SetFloat("_BufferHeight", Screen.height);
+        raymarchCompute.SetFloat("_StepSize", stepSize);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
+        raymarchCompute.SetInt("_Shape", (int)sdfShape);
+        raymarchCompute.SetInt("_StepCount", stepCount);
         raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
         raymarchCompute.SetVector("_CubeParams", cubeParams);
 
@@ -195,6 +214,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeTex", smokeTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeDepthTex", smokeDepthTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeMaskTex", smokeMaskTex);
+        raymarchCompute.SetTexture(raymarchSmokePass, "_NoiseTex", noiseTex);
         raymarchCompute.Dispatch(raymarchSmokePass, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
 
         // Composite volumes with source buffer
