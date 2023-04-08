@@ -37,6 +37,9 @@ int _StepCount;
 float _StepSize;
 float _SmokeSize;
 
+float3 _AnimationDirection;
+float _AnimationSpeed;
+
 int _Octaves;
 float _Persistance, _Amplitude, _Warp, _Add;
 int _CellSize, _Roughness, _Period, _Frequency;
@@ -199,7 +202,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             if (GetDist(curPos) > MIN_HIT_DISTANCE || (clipPos.z / clipPos.w) < sceneDepth) break;
 
             float3 uvw = curPos / _SmokeSize;
-            uvw.y -= _FrameTime * 0.1f;
+            uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
 
             float n = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
             accumulatedNoise += n * stepSize;

@@ -82,6 +82,13 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.01f, 64.0f)]
     public float smokeSize = 32.0f;
 
+    [Header("Animation Settings")]
+    [Space(5)]
+    public Vector3 animationDirection = new Vector3(0, 1, 0);
+
+    [Range(0.0f, 2.0f)]
+    public float animationSpeed = 0.0f;
+
     public enum ViewTexture {
         Composite = 0,
         SmokeAlbedo,
@@ -203,7 +210,11 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_StepSize", stepSize);
         raymarchCompute.SetFloat("_SmokeSize", smokeSize);
         raymarchCompute.SetFloat("_FrameTime", Time.time);
+        raymarchCompute.SetFloat("_AnimationSpeed", animationSpeed);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
+        Vector3 normalizedAnimationDir = animationDirection;
+        normalizedAnimationDir.Normalize();
+        raymarchCompute.SetVector("_AnimationDirection", new Vector4(normalizedAnimationDir.x, normalizedAnimationDir.y, normalizedAnimationDir.z));
         raymarchCompute.SetInt("_Shape", (int)sdfShape);
         raymarchCompute.SetInt("_StepCount", stepCount);
         raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
