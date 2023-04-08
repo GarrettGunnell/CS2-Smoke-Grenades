@@ -139,20 +139,38 @@ float GetDist(float3 pos) {
     return MAX_DISTANCE;
 }
 
-float4 RaymarchSmokeMesh(float3 rayOrigin, float3 rayDir) {
-    float distance = 0.0f;
+bool solveQuadratic(float a, float b, float c, inout float t0, inout float t1) {
+    float discr = b * b - 4.0f * a * c;
+    if (discr < 0) return false;
+    else if (discr == 0) t0 = t1 = -0.5f * b / a;
+    else {
+        float q = (b > 0) ? -0.5f * (b + sqrt(discr)) : -0.5f * (b - sqrt(discr));
 
-    for (int i = 0; i < STEPS && distance < MAX_DISTANCE; ++i) {
-        float3 pos = rayOrigin + distance * rayDir;
-
-        float distanceToObject = GetDist(pos);
-        distance += distanceToObject;
-
-        if (distanceToObject < MIN_HIT_DISTANCE)
-            return float4(pos, distance);
+        t0 = q / a;
+        t1 = c / q;
     }
 
-    return MAX_DISTANCE;
+    if (t0 > t1) {
+        float temp = t0;
+        t0 = t1;
+        t1 = temp;
+    }
+
+    return true;
+}
+
+float3 RaycastSmokeMesh(float3 rayOrigin, float3 rayDir) {
+    float3 center = 0;
+    float3 L = rayOrigin - center;
+
+    float a = 1;
+    float b = 2 * dot(L, rayDir);
+    float c = dot(L, L) - _Radius * _Radius;
+
+    float t0, t1;
+    if (!solveQuadratic(a, b, c, t0, t1)) return 0;
+
+    return float3(t0, t1, 1);
 }
 
 float3 CalcNormal(float3 p) {
@@ -178,24 +196,24 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
     direction = normalize(direction);
 
-    float4 hitPos = RaymarchSmokeMesh(origin, direction);
+    float3 hit = RaycastSmokeMesh(origin, direction);
+    float3 hitPos = origin + hit.x * direction;
     float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));
 
     float4 col = 0.0f;
     float accumulatedNoise = 0.0f;
-    if (hitPos.w < MAX_DISTANCE && (clipPos.z / clipPos.w) > sceneDepth) {
+    float distanceTraveledThroughVolume = 0.0f;
+    float mask = 0.0f;
+    if (hit.z && (clipPos.z / clipPos.w) > sceneDepth) {
         float3 n = -CalcNormal(hitPos.xyz);
 
         float ndotl = DotClamped(_SunDirection, n) * 0.5f + 0.5f;
         ndotl *= ndotl;
 
-        col.rgb = 1;
+        col.rgb = 0;
 
-        int maxSteps = _StepCount;
-        float3 curPos = hitPos.xyz;
-        float stepSize = _StepSize;
-
-        for (int i = 0; i < maxSteps; ++i) {
+        for (int i = 0; i < _StepCount; ++i) {
+            float3 curPos = hitPos.xyz + distanceTraveledThroughVolume * direction;
             clipPos = mul(_CameraViewProjection, float4(curPos.xyz, 1.0f));
 
             //If no longer inside volume or if position collides with opaque geometry
@@ -205,14 +223,17 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
 
             float n = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
-            accumulatedNoise += n * stepSize;
-            curPos += direction * stepSize;
+            accumulatedNoise += n * _StepSize;
+            distanceTraveledThroughVolume += _StepSize;
         }
+
+        mask = 1 - saturate(exp(-distanceTraveledThroughVolume * 0.5f));
     }
 
     //_SmokeTex[id.xy] = float4(uv, 0, 0);
     _SmokeTex[id.xy] = col;
-    _SmokeMaskTex[id.xy] = saturate(accumulatedNoise);
+    //_SmokeMaskTex[id.xy] = saturate(accumulatedNoise);
+    _SmokeMaskTex[id.xy] = mask;
 
     _SmokeDepthTex[id.xy] = clipPos.z / clipPos.w;
 }
