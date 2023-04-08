@@ -189,31 +189,26 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     uint seed = id.x + _BufferWidth * id.y + _BufferWidth * _BufferHeight;
     float sceneDepth = _DepthTex[id.xy];
 
+    // Create camera ray
     float3 origin = _CameraWorldPos;
-
     float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight)) * 2 - 1;
     float3 direction = mul(_CameraInvProjection, float4(uv, 1.0f, 1.0f)).xyz;
     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
     direction = normalize(direction);
 
+    // Intersect with smoke mesh
     float3 hit = RaycastSmokeMesh(origin, direction);
     float3 hitPos = origin + hit.x * direction;
     float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));
+    float clipDepth = clipPos.z / clipPos.w;
 
     float4 col = 0.0f;
-    float accumulatedNoise = 0.0f;
-    float distanceTraveledThroughVolume = 0.0f;
     float mask = 0.0f;
-    if (hit.z && (clipPos.z / clipPos.w) > sceneDepth) {
-        float3 n = -CalcNormal(hitPos.xyz);
-
-        float ndotl = DotClamped(_SunDirection, n) * 0.5f + 0.5f;
-        ndotl *= ndotl;
-
-        col.rgb = 0;
-
+    if (hit.z && clipDepth > sceneDepth) {
+        float distance = 0;
+        float density = 0;
         for (int i = 0; i < _StepCount; ++i) {
-            float3 curPos = hitPos.xyz + distanceTraveledThroughVolume * direction;
+            float3 curPos = hitPos.xyz + distance * direction;
             clipPos = mul(_CameraViewProjection, float4(curPos.xyz, 1.0f));
 
             //If no longer inside volume or if position collides with opaque geometry
@@ -223,17 +218,15 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
 
             float n = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
-            accumulatedNoise += n * _StepSize;
-            distanceTraveledThroughVolume += _StepSize;
+            density += n * _StepSize;
+            distance += _StepSize;
         }
 
-        mask = 1 - saturate(exp(-distanceTraveledThroughVolume * 0.5f));
+        mask = 1 - saturate(exp(-distance * 1.0f));
     }
 
     //_SmokeTex[id.xy] = float4(uv, 0, 0);
     _SmokeTex[id.xy] = col;
-    //_SmokeMaskTex[id.xy] = saturate(accumulatedNoise);
     _SmokeMaskTex[id.xy] = mask;
-
-    _SmokeDepthTex[id.xy] = clipPos.z / clipPos.w;
+    _SmokeDepthTex[id.xy] = clipDepth;
 }
