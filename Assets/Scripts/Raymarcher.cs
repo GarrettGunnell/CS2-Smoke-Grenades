@@ -100,7 +100,7 @@ public class Raymarcher : MonoBehaviour {
 
     private int generateNoisePass, debugNoisePass, raymarchSmokePass;
     
-    private RenderTexture noiseTex, smokeMaskTex, smokeTex, smokeDepthTex;
+    private RenderTexture noiseTex, smokeMaskTex, smokeTex, smokeDepthTex, depthTex;
 
     float Easing(float x) {
         return Mathf.Sin((radius * Mathf.PI) / 2);
@@ -156,6 +156,10 @@ public class Raymarcher : MonoBehaviour {
         smokeDepthTex.enableRandomWrite = true;
         smokeDepthTex.Create();
 
+        depthTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
+        depthTex.enableRandomWrite = true;
+        depthTex.Create();
+
         smokeMaskTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
         smokeMaskTex.enableRandomWrite = true;
         smokeMaskTex.Create();
@@ -185,6 +189,9 @@ public class Raymarcher : MonoBehaviour {
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination) {
+        //Create depth tex for compute shader
+        Graphics.Blit(source, depthTex, compositeMaterial, 0);
+
         Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(cam.projectionMatrix, false);
 
         raymarchCompute.SetVector("_CameraWorldPos", this.transform.position);
@@ -195,6 +202,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_BufferHeight", Screen.height);
         raymarchCompute.SetFloat("_StepSize", stepSize);
         raymarchCompute.SetFloat("_SmokeSize", smokeSize);
+        raymarchCompute.SetFloat("_FrameTime", Time.time);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetInt("_Shape", (int)sdfShape);
         raymarchCompute.SetInt("_StepCount", stepCount);
@@ -219,6 +227,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeDepthTex", smokeDepthTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeMaskTex", smokeMaskTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_NoiseTex", noiseTex);
+        raymarchCompute.SetTexture(raymarchSmokePass, "_DepthTex", depthTex);
         raymarchCompute.Dispatch(raymarchSmokePass, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
 
         // Composite volumes with source buffer
@@ -227,6 +236,6 @@ public class Raymarcher : MonoBehaviour {
         compositeMaterial.SetTexture("_SmokeMaskTex", smokeMaskTex);
         compositeMaterial.SetFloat("_DebugView", (int)debugView);
 
-        Graphics.Blit(source, destination, compositeMaterial);
+        Graphics.Blit(source, destination, compositeMaterial, 1);
     }
 }

@@ -18,6 +18,8 @@ RWTexture2D<float4> _SmokeTex;
 RWTexture2D<float> _SmokeDepthTex;
 RWTexture2D<half> _SmokeMaskTex;
 
+Texture2D<half> _DepthTex;
+
 float3 _CameraWorldPos;
 float3 _SunDirection;
 float4x4 _CameraToWorld;
@@ -25,6 +27,7 @@ float4x4 _CameraInvProjection;
 float4x4 _CameraViewProjection;
 float _BufferWidth;
 float _BufferHeight;
+float _FrameTime;
 
 uint _Shape;
 float _Radius;
@@ -110,6 +113,13 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
     _SmokeTex[id.xy] = col;
 }
 
+float hash(uint n) {
+    // integer hash copied from Hugo Elias
+	n = (n << 13U) ^ n;
+    n = n * (n * n * 15731U + 0x789221U) + 0x1376312589U;
+    return float(n & uint(0x7fffffffU)) / float(0x7fffffff);
+}
+
 float GetSphereDist(float3 pos) {
     return length(pos - 0) - _Radius;
 }
@@ -125,7 +135,6 @@ float GetDist(float3 pos) {
 
     return MAX_DISTANCE;
 }
-
 
 float4 RaymarchSmokeMesh(float3 rayOrigin, float3 rayDir) {
     float distance = 0.0f;
@@ -156,6 +165,9 @@ float3 CalcNormal(float3 p) {
 
 [numthreads(8,8,1)]
 void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
+    uint seed = id.x + _BufferWidth * id.y + _BufferWidth * _BufferHeight;
+    float sceneDepth = _DepthTex[id.xy];
+
     float3 origin = _CameraWorldPos;
 
     float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight)) * 2 - 1;
@@ -164,10 +176,11 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     direction = normalize(direction);
 
     float4 hitPos = RaymarchSmokeMesh(origin, direction);
+    float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));
 
     float4 col = 0.0f;
     float accumulatedNoise = 0.0f;
-    if (hitPos.w < MAX_DISTANCE) {
+    if (hitPos.w < MAX_DISTANCE && (clipPos.z / clipPos.w) > sceneDepth) {
         float3 n = -CalcNormal(hitPos.xyz);
 
         float ndotl = DotClamped(_SunDirection, n) * 0.5f + 0.5f;
@@ -180,18 +193,23 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         float stepSize = _StepSize;
 
         for (int i = 0; i < maxSteps; ++i) {
-            float n = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, curPos / _SmokeSize, 0).r);
+            clipPos = mul(_CameraViewProjection, float4(curPos.xyz, 1.0f));
+
+            //If no longer inside volume or if position collides with opaque geometry
+            if (GetDist(curPos) > MIN_HIT_DISTANCE || (clipPos.z / clipPos.w) < sceneDepth) break;
+
+            float3 uvw = curPos / _SmokeSize;
+            uvw.y -= _FrameTime * 0.1f;
+
+            float n = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
             accumulatedNoise += n * stepSize;
             curPos += direction * stepSize;
-            if (GetDist(curPos) > MIN_HIT_DISTANCE) break;
         }
     }
 
     //_SmokeTex[id.xy] = float4(uv, 0, 0);
     _SmokeTex[id.xy] = col;
     _SmokeMaskTex[id.xy] = saturate(accumulatedNoise);
-
-    float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));
 
     _SmokeDepthTex[id.xy] = clipPos.z / clipPos.w;
 }
