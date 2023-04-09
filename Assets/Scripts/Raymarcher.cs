@@ -90,6 +90,12 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.01f, 2.0f)]
     public float scatteringCoefficient = 0.5f;
 
+    public enum PhaseFunction {
+        HenyeyGreenstein = 0,
+        Mie,
+        Rayleigh
+    } public PhaseFunction phaseFunction;
+
     [Range(-1.0f, 1.0f)]
     public float scatteringAnisotropy = 0.0f;
 
@@ -233,6 +239,7 @@ public class Raymarcher : MonoBehaviour {
         normalizedAnimationDir.Normalize();
         raymarchCompute.SetVector("_AnimationDirection", new Vector4(normalizedAnimationDir.x, normalizedAnimationDir.y, normalizedAnimationDir.z));
         raymarchCompute.SetInt("_Shape", (int)sdfShape);
+        raymarchCompute.SetInt("_PhaseFunction", (int)phaseFunction);
         raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
         raymarchCompute.SetVector("_CubeParams", cubeParams);
         raymarchCompute.SetVector("_LightColor", lightColor);
