@@ -241,11 +241,16 @@ float Mie(float g, float cos_theta) {
     return (3.0f / (8.0f * PI)) * (((1 - g * g) * (1 + cos_theta * cos_theta)) / ((2.0f + g * g) * (denom * sqrt(denom)))); 
 }
 
+float Rayleigh(float cos_theta) {
+    return (3.0f / (16.0f * PI)) * (1 + cos_theta * cos_theta);
+}
+
 float phase(float g, float cos_theta) {
     float p = 0.0f;
 
     if (_PhaseFunction == 0) p = HenyeyGreenstein(g, cos_theta);
     if (_PhaseFunction == 1) p = Mie(g, cos_theta);
+    if (_PhaseFunction == 2) p = Rayleigh(cos_theta);
 
     return p;
 }
