@@ -723,14 +723,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: 0, y: 0.0026179885, z: 0, w: 0.9999966}
   m_LocalPosition: {x: 0, y: 1, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0.3, z: 0}
 --- !u!114 &963194229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -803,8 +803,14 @@ MonoBehaviour:
   maxRadius: 3
   growthSpeed: 1
   restartAnimation: 0
+  lightColor: {r: 1, g: 1, b: 1, a: 0}
+  smokeColor: {r: 0, g: 0, b: 0, a: 0}
   stepCount: 64
-  stepSize: 0.05
+  stepSize: 0.2
+  smokeSize: 32
+  absorptionCoefficient: 0.5
+  animationDirection: {x: 0, y: 1, z: 0}
+  animationSpeed: 0
   debugView: 0
 --- !u!1 &1039394212
 GameObject:

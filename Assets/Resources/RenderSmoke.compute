@@ -39,6 +39,7 @@ int _StepCount;
 float _StepSize;
 float _SmokeSize;
 float _AbsorptionCoefficient;
+float3 _SmokeColor;
 
 float3 _AnimationDirection;
 float _AnimationSpeed;
@@ -256,9 +257,10 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         float distance = 0;
         float density = 0;
 
+        col = _SmokeColor;
+
         int steps = ceil((t2 - t1) / _StepSize);
         float stepSize = (t2 - t1) / (float)steps;
-        
         for (int i = 0; i < steps; ++i) {
             float t = t1 + stepSize * (i + 0.5);
 
