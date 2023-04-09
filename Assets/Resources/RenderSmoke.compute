@@ -282,11 +282,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         float t1 = hit.x;
         float t2 = min(hit.y, sceneIntersectDistance);
 
-        float distance = 0;
-        float density = 1;
-
         col = _SmokeColor;
-
         float extinctionCoefficient = _AbsorptionCoefficient + _ScatteringCoefficient;
 
         int steps = ceil((t2 - t1) / _StepSize);
@@ -295,6 +291,13 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             float t = t1 + stepSize * (i + hash(seed * (seed + i)) * _Jitter);
 
             float3 samplePos = origin + t * rayDir;
+
+            
+            float3 uvw = samplePos / _SmokeSize;
+            uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
+
+            float density = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
+
             float sampleAlpha = exp(-stepSize * density * extinctionCoefficient);
     
             alpha *= sampleAlpha;
@@ -305,13 +308,6 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 float lightAttenuation = exp(-lightHit.y * density * extinctionCoefficient);
                 col += alpha * _LightColor * phase(_G, cos_theta) * lightAttenuation * _ScatteringCoefficient * density * stepSize;
             }
-            /*
-            float3 uvw = curPos / _SmokeSize;
-            uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
-
-            float n = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
-            density += n * _StepSize;
-            */
         }
     }
 
