@@ -36,6 +36,7 @@ float4 _CubeParams;
 int _StepCount;
 float _StepSize;
 float _SmokeSize;
+float3 _SmokeColor;
 
 float3 _AnimationDirection;
 float _AnimationSpeed;
@@ -192,7 +193,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     // Create camera ray
     float3 origin = _CameraWorldPos;
     float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight)) * 2 - 1;
-    float3 direction = mul(_CameraInvProjection, float4(uv, 1.0f, 1.0f)).xyz;
+    float3 direction = mul(_CameraInvProjection, float4(uv, 0.0f, 1.0f)).xyz;
     direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
     direction = normalize(direction);
 
@@ -203,7 +204,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     float clipDepth = clipPos.z / clipPos.w;
 
     float4 col = 0.0f;
-    float mask = 0.0f;
+    float alpha = 0.0f;
     if (hit.z && clipDepth > sceneDepth) {
         float distance = 0;
         float density = 0;
@@ -211,8 +212,8 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             float3 curPos = hitPos.xyz + distance * direction;
             clipPos = mul(_CameraViewProjection, float4(curPos.xyz, 1.0f));
 
-            //If no longer inside volume or if position collides with opaque geometry
-            if (GetDist(curPos) > MIN_HIT_DISTANCE || (clipPos.z / clipPos.w) < sceneDepth) break;
+            //If if position collides with opaque geometry
+            if ((clipPos.z / clipPos.w) < sceneDepth) break;
 
             float3 uvw = curPos / _SmokeSize;
             uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
@@ -222,11 +223,11 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             distance += _StepSize;
         }
 
-        mask = 1 - saturate(exp(-distance * 1.0f));
+        alpha = 1 - saturate(exp(-distance * 1.0f));
     }
 
     //_SmokeTex[id.xy] = float4(uv, 0, 0);
-    _SmokeTex[id.xy] = col;
-    _SmokeMaskTex[id.xy] = mask;
-    _SmokeDepthTex[id.xy] = clipDepth;
+    _SmokeTex[id.xy] = float4(_SmokeColor, 1.0f);
+    _SmokeMaskTex[id.xy] = 1 - alpha;
+    _SmokeDepthTex[id.xy] = clipDepth * (clipDepth > sceneDepth) * hit.z;
 }
