@@ -42,6 +42,7 @@ float _SmokeSize;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
 float3 _SmokeColor;
 float _G;
+float _Jitter;
 
 float3 _AnimationDirection;
 float _AnimationSpeed;
@@ -272,7 +273,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         int steps = ceil((t2 - t1) / _StepSize);
         float stepSize = (t2 - t1) / (float)steps;
         for (int i = 0; i < steps; ++i) {
-            float t = t1 + stepSize * (i + 0.5);
+            float t = t1 + stepSize * (i + hash(seed * (seed + i)) * _Jitter);
 
             float3 samplePos = origin + t * rayDir;
             float sampleAlpha = exp(-stepSize * density * extinctionCoefficient);
@@ -280,7 +281,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             alpha *= sampleAlpha;
 
             float3 lightHit = RaycastSmokeMesh(samplePos, -_SunDirection);
-            if (lightHit.z) {
+            if (lightHit.z && lightHit.x <= 0) {
                 float cos_theta = dot(rayDir, -_SunDirection);
                 float lightAttenuation = exp(-lightHit.y * density * extinctionCoefficient);
                 col += alpha * _LightColor * phase(_G, cos_theta) * lightAttenuation * _ScatteringCoefficient * density * stepSize;

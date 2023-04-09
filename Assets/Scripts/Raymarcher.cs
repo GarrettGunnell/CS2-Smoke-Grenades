@@ -78,6 +78,9 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.05f, 1.0f)]
     public float stepSize = 0.05f;
 
+    [Range(0.0f, 1.0f)]
+    public float jitter = 0.05f;
+
     [Range(0.01f, 64.0f)]
     public float smokeSize = 32.0f;
 
@@ -219,6 +222,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_BufferHeight", Screen.height);
         raymarchCompute.SetFloat("_StepSize", stepSize);
         raymarchCompute.SetFloat("_SmokeSize", smokeSize);
+        raymarchCompute.SetFloat("_Jitter", jitter);
         raymarchCompute.SetFloat("_FrameTime", Time.time);
         raymarchCompute.SetFloat("_AnimationSpeed", animationSpeed);
         raymarchCompute.SetFloat("_AbsorptionCoefficient", absorptionCoefficient);
