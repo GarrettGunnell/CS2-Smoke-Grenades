@@ -75,9 +75,6 @@ public class Raymarcher : MonoBehaviour {
     public Color lightColor;
     public Color smokeColor;
 
-    [Range(2, 128)]
-    public int stepCount = 64;
-
     [Range(0.05f, 1.0f)]
     public float stepSize = 0.05f;
 
@@ -86,6 +83,9 @@ public class Raymarcher : MonoBehaviour {
 
     [Range(0.01f, 2.0f)]
     public float absorptionCoefficient = 0.5f;
+
+    [Range(0.01f, 2.0f)]
+    public float scatteringCoefficient = 0.5f;
 
     [Header("Animation Settings")]
     [Space(5)]
@@ -219,12 +219,12 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_FrameTime", Time.time);
         raymarchCompute.SetFloat("_AnimationSpeed", animationSpeed);
         raymarchCompute.SetFloat("_AbsorptionCoefficient", absorptionCoefficient);
+        raymarchCompute.SetFloat("_ScatteringCoefficient", scatteringCoefficient);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         Vector3 normalizedAnimationDir = animationDirection;
         normalizedAnimationDir.Normalize();
         raymarchCompute.SetVector("_AnimationDirection", new Vector4(normalizedAnimationDir.x, normalizedAnimationDir.y, normalizedAnimationDir.z));
         raymarchCompute.SetInt("_Shape", (int)sdfShape);
-        raymarchCompute.SetInt("_StepCount", stepCount);
         raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
         raymarchCompute.SetVector("_CubeParams", cubeParams);
         raymarchCompute.SetVector("_LightColor", lightColor);
