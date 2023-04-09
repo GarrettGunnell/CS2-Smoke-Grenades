@@ -25,6 +25,7 @@ float3 _SunDirection;
 float4x4 _CameraToWorld;
 float4x4 _CameraInvProjection;
 float4x4 _CameraViewProjection;
+float4x4 _CameraInvViewProjection;
 float _BufferWidth;
 float _BufferHeight;
 float _FrameTime;
@@ -124,22 +125,6 @@ float hash(uint n) {
     return float(n & uint(0x7fffffffU)) / float(0x7fffffff);
 }
 
-float GetSphereDist(float3 pos) {
-    return length(pos - 0) - _Radius;
-}
-
-float GetCubeDist(float3 pos) {
-    float3 q = abs(pos - _CubeParams.xyz) - _CubeParams.w;
-    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
-}
-
-float GetDist(float3 pos) {
-    if (_Shape == 0) return GetSphereDist(pos);
-    if (_Shape == 1) return GetCubeDist(pos);
-
-    return MAX_DISTANCE;
-}
-
 bool solveQuadratic(float a, float b, float c, inout float t0, inout float t1) {
     float discr = b * b - 4.0f * a * c;
     if (discr < 0) return false;
@@ -157,11 +142,13 @@ bool solveQuadratic(float a, float b, float c, inout float t0, inout float t1) {
         t1 = temp;
     }
 
+    if (t0 < 0) return false;
+
     return true;
 }
 
-float3 RaycastSmokeMesh(float3 rayOrigin, float3 rayDir) {
-    float3 center = 0;
+float3 GetSphereHit(float3 rayOrigin, float3 rayDir) {
+    float3 center = _CubeParams.xyz;
     float3 L = rayOrigin - center;
 
     float a = 1;
@@ -174,46 +161,55 @@ float3 RaycastSmokeMesh(float3 rayOrigin, float3 rayDir) {
     return float3(t0, t1, 1);
 }
 
-float3 CalcNormal(float3 p) {
-    float2 e = float2(0.001, 0);
-    float3 n = GetDist(p) - float3(
-        GetDist(p - e.xyy), 
-        GetDist(p - e.yxy), 
-        GetDist(p - e.yyx)
-    );
+float GetCubeDist(float3 pos) {
+    float3 q = abs(pos - _CubeParams.xyz) - _CubeParams.w;
+    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
 
-    return normalize(n);
+
+float3 RaycastSmokeMesh(float3 rayOrigin, float3 rayDir) {
+    return GetSphereHit(rayOrigin, rayDir);
+}
+
+
+float3 ComputeWorldSpacePosition(float2 positionNDC, float deviceDepth) {
+    float4 positionCS = float4(positionNDC * 2.0 - 1.0, deviceDepth, 1.0);
+    float4 hpositionWS = mul(_CameraInvViewProjection, positionCS);
+    return hpositionWS.xyz / hpositionWS.w;
 }
 
 [numthreads(8,8,1)]
 void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
+    float2 uv = id.xy / float2(_BufferWidth, _BufferHeight);
     uint seed = id.x + _BufferWidth * id.y + _BufferWidth * _BufferHeight;
-    float sceneDepth = _DepthTex[id.xy];
+    float sceneDepth = _DepthTex.SampleLevel(linear_repeat_sampler, uv, 0).r;
+
+    float3 sceneWorldPos = ComputeWorldSpacePosition(uv, sceneDepth);
 
     // Create camera ray
     float3 origin = _CameraWorldPos;
-    float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight)) * 2 - 1;
-    float3 direction = mul(_CameraInvProjection, float4(uv, 0.0f, 1.0f)).xyz;
-    direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
-    direction = normalize(direction);
+    float3 rayDir = mul(_CameraInvProjection, float4(uv * 2 - 1, 0.0f, 1.0f)).xyz;
+    rayDir = mul(_CameraToWorld, float4(rayDir, 0.0f)).xyz;
+    rayDir = normalize(rayDir);
 
     // Intersect with smoke mesh
-    float3 hit = RaycastSmokeMesh(origin, direction);
-    float3 hitPos = origin + hit.x * direction;
-    float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));
-    float clipDepth = clipPos.z / clipPos.w;
+    float3 hit = RaycastSmokeMesh(origin, rayDir);
+    float3 hitPos = origin + hit.x * rayDir;
 
     float4 col = 0.0f;
     float alpha = 0.0f;
-    if (hit.z && clipDepth > sceneDepth) {
+
+    // Solve for t in: P = O + tD
+    float sceneIntersectDistance = -((origin - sceneWorldPos) / rayDir).x;
+    if (hit.z && (hit.x < sceneIntersectDistance)) {
+        float3 p1 = origin + rayDir * hit.x;
+        float3 p2 = origin + rayDir * hit.y;
+
         float distance = 0;
         float density = 0;
+        /*
         for (int i = 0; i < _StepCount; ++i) {
-            float3 curPos = hitPos.xyz + distance * direction;
-            clipPos = mul(_CameraViewProjection, float4(curPos.xyz, 1.0f));
-
-            //If if position collides with opaque geometry
-            if ((clipPos.z / clipPos.w) < sceneDepth) break;
+            float3 curPos = hitPos.xyz + distance * rayDir;
 
             float3 uvw = curPos / _SmokeSize;
             uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
@@ -222,12 +218,16 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             density += n * _StepSize;
             distance += _StepSize;
         }
-
-        alpha = 1 - saturate(exp(-distance * 1.0f));
+        */
+        distance = min(length(p1 - sceneWorldPos), length(p1 - p2));
+        alpha = 1 - saturate(exp(-distance * 0.5f));
     }
 
-    //_SmokeTex[id.xy] = float4(uv, 0, 0);
+    //_SmokeTex[id.xy] = (smokeIntersectDistance < sceneIntersectDistance);
     _SmokeTex[id.xy] = float4(_SmokeColor, 1.0f);
-    _SmokeMaskTex[id.xy] = 1 - alpha;
-    _SmokeDepthTex[id.xy] = clipDepth * (clipDepth > sceneDepth) * hit.z;
+    _SmokeMaskTex[id.xy] = alpha;
+
+    // Calculate clip depth
+    float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));
+    _SmokeDepthTex[id.xy] = clipPos.z / clipPos.w;
 }

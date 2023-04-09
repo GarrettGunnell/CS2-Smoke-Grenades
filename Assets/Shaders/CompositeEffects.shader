@@ -56,11 +56,11 @@ Shader "Hidden/CompositeEffects" {
                 float4 col = tex2D(_MainTex, i.uv);
                 float4 smokeAlbedo = tex2D(_SmokeTex, i.uv);
                 float smokeDepth = tex2D(_SmokeDepthTex, i.uv).r;
-                float smokeMask = tex2D(_SmokeMaskTex, i.uv).r;
+                float smokeMask = saturate(tex2D(_SmokeMaskTex, i.uv).r);
 
                 switch (_DebugView) {
                     case 0:
-                        return smokeMask * col + (1 - smokeMask) * smokeAlbedo;
+                        return (1 - smokeMask) * col + smokeMask * smokeAlbedo;
                     case 1:
                         return smokeAlbedo;
                     case 2:

@@ -201,11 +201,13 @@ public class Raymarcher : MonoBehaviour {
         Graphics.Blit(source, depthTex, compositeMaterial, 0);
 
         Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(cam.projectionMatrix, false);
+        Matrix4x4 viewProjMatrix = projMatrix * cam.worldToCameraMatrix;
 
         raymarchCompute.SetVector("_CameraWorldPos", this.transform.position);
         raymarchCompute.SetMatrix("_CameraToWorld", cam.cameraToWorldMatrix);
         raymarchCompute.SetMatrix("_CameraInvProjection", projMatrix.inverse);
-        raymarchCompute.SetMatrix("_CameraViewProjection", projMatrix * cam.worldToCameraMatrix);
+        raymarchCompute.SetMatrix("_CameraViewProjection", viewProjMatrix);
+        raymarchCompute.SetMatrix("_CameraInvViewProjection", viewProjMatrix.inverse);
         raymarchCompute.SetFloat("_BufferWidth", Screen.width);
         raymarchCompute.SetFloat("_BufferHeight", Screen.height);
         raymarchCompute.SetFloat("_StepSize", stepSize);
