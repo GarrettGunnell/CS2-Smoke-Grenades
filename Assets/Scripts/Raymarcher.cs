@@ -77,11 +77,14 @@ public class Raymarcher : MonoBehaviour {
     [Range(2, 128)]
     public int stepCount = 64;
 
-    [Range(0.0f, 1.0f)]
+    [Range(0.05f, 1.0f)]
     public float stepSize = 0.05f;
 
     [Range(0.01f, 64.0f)]
     public float smokeSize = 32.0f;
+
+    [Range(0.01f, 2.0f)]
+    public float absorptionCoefficient = 0.5f;
 
     [Header("Animation Settings")]
     [Space(5)]
@@ -214,6 +217,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_SmokeSize", smokeSize);
         raymarchCompute.SetFloat("_FrameTime", Time.time);
         raymarchCompute.SetFloat("_AnimationSpeed", animationSpeed);
+        raymarchCompute.SetFloat("_AbsorptionCoefficient", absorptionCoefficient);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         Vector3 normalizedAnimationDir = animationDirection;
         normalizedAnimationDir.Normalize();

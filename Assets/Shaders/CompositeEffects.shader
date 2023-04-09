@@ -60,7 +60,7 @@ Shader "Hidden/CompositeEffects" {
 
                 switch (_DebugView) {
                     case 0:
-                        return (1 - smokeMask) * col + smokeMask * smokeAlbedo;
+                        return lerp(col, smokeAlbedo, 1 - smokeMask);
                     case 1:
                         return smokeAlbedo;
                     case 2:
