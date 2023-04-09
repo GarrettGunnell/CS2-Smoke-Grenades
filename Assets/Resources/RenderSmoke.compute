@@ -9,6 +9,7 @@
 #define STEPS 256
 #define MIN_HIT_DISTANCE 0.001
 #define MAX_DISTANCE 1000
+#define PI 3.1415926538
 
 RWTexture3D<half> _RWNoiseTex;
 Texture3D<half> _NoiseTex;
@@ -40,6 +41,7 @@ float _StepSize;
 float _SmokeSize;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
 float3 _SmokeColor;
+float _G;
 
 float3 _AnimationDirection;
 float _AnimationSpeed;
@@ -227,6 +229,12 @@ float3 ComputeWorldSpacePosition(float2 positionNDC, float deviceDepth) {
     return hpositionWS.xyz / hpositionWS.w;
 }
 
+// Henyey-Greenstein
+float phase(float g, float cos_theta) {
+    float denom = 1 + g * g - 2 * g * cos_theta;
+    return (1 / (4 * PI)) * ((1 - g * g) / (denom * sqrt(denom)));
+}
+
 [numthreads(8,8,1)]
 void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     float2 uv = id.xy / float2(_BufferWidth, _BufferHeight);
@@ -255,9 +263,11 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         float t2 = min(hit.y, sceneIntersectDistance);
 
         float distance = 0;
-        float density = 0;
+        float density = 1;
 
         col = _SmokeColor;
+
+        float extinctionCoefficient = _AbsorptionCoefficient + _ScatteringCoefficient;
 
         int steps = ceil((t2 - t1) / _StepSize);
         float stepSize = (t2 - t1) / (float)steps;
@@ -265,14 +275,15 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             float t = t1 + stepSize * (i + 0.5);
 
             float3 samplePos = origin + t * rayDir;
-            float sampleAlpha = exp(-stepSize * (_AbsorptionCoefficient + _ScatteringCoefficient));
+            float sampleAlpha = exp(-stepSize * density * extinctionCoefficient);
     
             alpha *= sampleAlpha;
 
             float3 lightHit = RaycastSmokeMesh(samplePos, -_SunDirection);
             if (lightHit.z) {
-                float lightAttenuation = exp(-lightHit.y * (_AbsorptionCoefficient + _ScatteringCoefficient));
-                col += alpha * _LightColor * lightAttenuation * stepSize;
+                float cos_theta = dot(rayDir, -_SunDirection);
+                float lightAttenuation = exp(-lightHit.y * density * extinctionCoefficient);
+                col += alpha * _LightColor * phase(_G, cos_theta) * lightAttenuation * _ScatteringCoefficient * density * stepSize;
             }
             /*
             float3 uvw = curPos / _SmokeSize;

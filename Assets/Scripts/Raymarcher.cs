@@ -87,6 +87,9 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.01f, 2.0f)]
     public float scatteringCoefficient = 0.5f;
 
+    [Range(-1.0f, 1.0f)]
+    public float scatteringAnisotropy = 0.0f;
+
     [Header("Animation Settings")]
     [Space(5)]
     public Vector3 animationDirection = new Vector3(0, 1, 0);
@@ -220,6 +223,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_AnimationSpeed", animationSpeed);
         raymarchCompute.SetFloat("_AbsorptionCoefficient", absorptionCoefficient);
         raymarchCompute.SetFloat("_ScatteringCoefficient", scatteringCoefficient);
+        raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         Vector3 normalizedAnimationDir = animationDirection;
         normalizedAnimationDir.Normalize();
