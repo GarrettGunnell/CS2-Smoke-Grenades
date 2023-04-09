@@ -21,6 +21,7 @@ RWTexture2D<half> _SmokeMaskTex;
 Texture2D<half> _DepthTex;
 
 float3 _CameraWorldPos;
+float3 _LightColor;
 float3 _SunDirection;
 float4x4 _CameraToWorld;
 float4x4 _CameraInvProjection;
@@ -37,7 +38,6 @@ float4 _CubeParams;
 int _StepCount;
 float _StepSize;
 float _SmokeSize;
-float3 _SmokeColor;
 float _AbsorptionCoefficient;
 
 float3 _AnimationDirection;
@@ -267,10 +267,10 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     
             alpha *= sampleAlpha;
 
-            float3 lightHit = GetSphereHit(samplePos, -_SunDirection);
+            float3 lightHit = RaycastSmokeMesh(samplePos, -_SunDirection);
             if (lightHit.z) {
                 float lightAttenuation = exp(-lightHit.y * _AbsorptionCoefficient);
-                col += alpha * float3(1.3, 0.3, 0.9) * lightAttenuation * stepSize;
+                col += alpha * _LightColor * lightAttenuation * stepSize;
             }
             /*
             float3 uvw = curPos / _SmokeSize;
@@ -280,13 +280,11 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             density += n * _StepSize;
             */
         }
-
-        alpha = exp(-(t2 - t1) * _AbsorptionCoefficient);
     }
 
     //_SmokeTex[id.xy] = (smokeIntersectDistance < sceneIntersectDistance);
-    _SmokeTex[id.xy] = float4(col, 1.0f);
-    _SmokeMaskTex[id.xy] = alpha;
+    _SmokeTex[id.xy] = float4(saturate(col), 1.0f);
+    _SmokeMaskTex[id.xy] = saturate(alpha);
 
     // Calculate clip depth
     float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));

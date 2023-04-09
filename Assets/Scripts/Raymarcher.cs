@@ -71,8 +71,8 @@ public class Raymarcher : MonoBehaviour {
 
     [Header("Smoke Settings")]
     [Space(5)]
-
-    public Color smokeColor;
+    [ColorUsageAttribute(false, true)]
+    public Color lightColor;
 
     [Range(2, 128)]
     public int stepCount = 64;
@@ -226,7 +226,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetInt("_StepCount", stepCount);
         raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
         raymarchCompute.SetVector("_CubeParams", cubeParams);
-        raymarchCompute.SetVector("_SmokeColor", smokeColor);
+        raymarchCompute.SetVector("_LightColor", lightColor);
 
         if (debugNoise) {
             raymarchCompute.SetTexture(debugNoisePass, "_NoiseTex", noiseTex);
