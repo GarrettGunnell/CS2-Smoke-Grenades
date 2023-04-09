@@ -161,16 +161,65 @@ float3 GetSphereHit(float3 rayOrigin, float3 rayDir) {
     return float3(t0, t1, 1);
 }
 
-float GetCubeDist(float3 pos) {
-    float3 q = abs(pos - _CubeParams.xyz) - _CubeParams.w;
-    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+float3 GetCubeHit(float3 rayOrigin, float3 rayDir) {
+    float3 minB = _CubeParams.xyz - _CubeParams.w;
+    float3 maxB = _CubeParams.xyz + _CubeParams.w;
+    float tmin = (minB.x - rayOrigin.x) / rayDir.x; 
+    float tmax = (maxB.x - rayOrigin.x) / rayDir.x; 
+ 
+    if (tmin > tmax) {
+        float temp = tmin;
+        tmin = tmax;
+        tmax = temp;
+    }
+ 
+    float tymin = (minB.y - rayOrigin.y) / rayDir.y; 
+    float tymax = (maxB.y - rayOrigin.y) / rayDir.y; 
+ 
+    if (tymin > tymax) {
+        float temp = tymin;
+        tymin = tymax;
+        tymax = temp;
+    } 
+ 
+    if ((tmin > tymax) || (tymin > tmax)) 
+        return 0; 
+ 
+    if (tymin > tmin) 
+        tmin = tymin; 
+ 
+    if (tymax < tmax) 
+        tmax = tymax; 
+ 
+    float tzmin = (minB.z - rayOrigin.z) / rayDir.z; 
+    float tzmax = (maxB.z - rayOrigin.z) / rayDir.z; 
+ 
+    if (tzmin > tzmax) {
+        float temp = tzmin;
+        tzmin = tzmax;
+        tzmax = temp;
+    }
+ 
+    if ((tmin > tzmax) || (tzmin > tmax)) 
+        return 0; 
+ 
+    if (tzmin > tmin) 
+        tmin = tzmin; 
+ 
+    if (tzmax < tmax) 
+        tmax = tzmax; 
+ 
+    return float3(tmin, tmax, 1); 
 }
-
 
 float3 RaycastSmokeMesh(float3 rayOrigin, float3 rayDir) {
-    return GetSphereHit(rayOrigin, rayDir);
-}
+    float3 hit = 0;
 
+    if (_Shape == 0) hit = GetSphereHit(rayOrigin, rayDir);
+    if (_Shape == 1) hit = GetCubeHit(rayOrigin, rayDir);
+
+    return hit;
+}
 
 float3 ComputeWorldSpacePosition(float2 positionNDC, float deviceDepth) {
     float4 positionCS = float4(positionNDC * 2.0 - 1.0, deviceDepth, 1.0);
