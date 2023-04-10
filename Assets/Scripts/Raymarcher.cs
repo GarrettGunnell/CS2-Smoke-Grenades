@@ -154,6 +154,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetInt("_Period", period);
         raymarchCompute.SetInt("_ClampNoise", clampNoise ? 1 : 0);
         raymarchCompute.SetInt("_AbsMode", (int)absMode);
+        raymarchCompute.SetVector("_NoiseRes", noiseResolution);
 
         raymarchCompute.Dispatch(generateNoisePass, Mathf.CeilToInt(noiseResolution.x / 8.0f), Mathf.CeilToInt(noiseResolution.y / 8.0f), Mathf.CeilToInt(noiseResolution.z / 8.0f));
 
@@ -263,6 +264,7 @@ public class Raymarcher : MonoBehaviour {
             raymarchCompute.SetInt("_DebugNoiseSlice", debugNoiseSlice);
             raymarchCompute.SetInt("_DebugAxis", (int)debugNoiseAxis);
             raymarchCompute.SetInt("_DebugTiledNoise", debugTiledNoise ? 1 : 0);
+            raymarchCompute.SetVector("_NoiseRes", noiseResolution);
 
             raymarchCompute.Dispatch(debugNoisePass, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
 
