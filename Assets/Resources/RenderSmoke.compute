@@ -51,7 +51,7 @@ float _AnimationSpeed;
 
 int _Octaves;
 float _Persistance, _Amplitude, _Warp, _Add;
-int _CellSize, _Roughness, _Period, _Frequency;
+int _CellSize, _Roughness, _Period, _Frequency, _Abs;
 
 [numthreads(8,8,8)]
 void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
@@ -71,7 +71,8 @@ void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
         a *= G;
     }
 
-    _RWNoiseTex[id.xyz] = saturate(abs(n + _Add));
+    n += _Add;
+    _RWNoiseTex[id.xyz] = saturate(_Abs ? abs(n) : n);
 }
 
 uint _DebugNoiseSlice;
