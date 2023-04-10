@@ -96,6 +96,9 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.01f, 64.0f)]
     public float smokeSize = 32.0f;
 
+    [Range(0.0f, 10.0f)]
+    public float volumeDensity = 1.0f;
+
     [Range(0.0f, 3.0f)]
     public float absorptionCoefficient = 0.5f;
 
@@ -103,6 +106,9 @@ public class Raymarcher : MonoBehaviour {
     public float scatteringCoefficient = 0.5f;
 
     public Color extinctionColor = new Color(1, 1, 1);
+
+    [Range(0.0f, 10.0f)]
+    public float shadowDensity = 1.0f;
 
     public enum PhaseFunction {
         HenyeyGreenstein = 0,
@@ -247,6 +253,8 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_FrameTime", Time.time);
         raymarchCompute.SetFloat("_AbsorptionCoefficient", absorptionCoefficient);
         raymarchCompute.SetFloat("_ScatteringCoefficient", scatteringCoefficient);
+        raymarchCompute.SetFloat("_VolumeDensity", volumeDensity);
+        raymarchCompute.SetFloat("_ShadowDensity", shadowDensity);
         raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetVector("_AnimationDirection", animationDirection);
