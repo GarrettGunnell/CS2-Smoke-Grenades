@@ -38,6 +38,7 @@ float4 _CubeParams;
 
 int _StepCount;
 float _StepSize;
+float _LightStepSize;
 float _SmokeSize;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
 float3 _SmokeColor;
@@ -70,7 +71,7 @@ void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
         a *= G;
     }
 
-    _RWNoiseTex[id.xyz] = saturate(n + _Add);
+    _RWNoiseTex[id.xyz] = saturate(abs(n + _Add));
 }
 
 uint _DebugNoiseSlice;
@@ -255,6 +256,12 @@ float phase(float g, float cos_theta) {
     return p;
 }
 
+float getDensity(float3 pos) {
+    float3 uvw = pos / _SmokeSize;
+    uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
+    return saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
+}
+
 [numthreads(8,8,1)]
 void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     float2 uv = id.xy / float2(_BufferWidth, _BufferHeight);
@@ -284,6 +291,8 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
         col = _SmokeColor;
         float extinctionCoefficient = _AbsorptionCoefficient + _ScatteringCoefficient;
+        float cos_theta = dot(rayDir, -_SunDirection);
+        float p = phase(_G, cos_theta);
 
         int steps = ceil((t2 - t1) / _StepSize);
         float stepSize = (t2 - t1) / (float)steps;
@@ -291,22 +300,23 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             float t = t1 + stepSize * (i + hash(seed * (seed + i)) * _Jitter);
 
             float3 samplePos = origin + t * rayDir;
-
-            
-            float3 uvw = samplePos / _SmokeSize;
-            uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
-
-            float density = saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
-
-            float sampleAlpha = exp(-stepSize * density * extinctionCoefficient);
-    
-            alpha *= sampleAlpha;
+            float density = getDensity(samplePos);
+            alpha *= exp(-stepSize * density * extinctionCoefficient);
 
             float3 lightHit = RaycastSmokeMesh(samplePos, -_SunDirection);
             if (lightHit.z && lightHit.x <= 0) {
-                float cos_theta = dot(rayDir, -_SunDirection);
-                float lightAttenuation = exp(-lightHit.y * density * extinctionCoefficient);
-                col += alpha * _LightColor * phase(_G, cos_theta) * lightAttenuation * _ScatteringCoefficient * density * stepSize;
+                int lSteps = ceil(lightHit.y / _LightStepSize);
+                float lStepSize = lightHit.y / lSteps;
+
+                float tau = 0.0f;
+                for (int j = 0; j < lSteps; ++j) {
+                    float tl = lStepSize * (j + hash(seed * (seed + i)) * _Jitter);
+                    float3 lSamplePos = samplePos - tl * _SunDirection;
+                    tau += getDensity(lSamplePos);
+                }
+
+                float lightAttenuation = exp(-tau * extinctionCoefficient * lStepSize);
+                col += _LightColor * lightAttenuation * alpha * p * _ScatteringCoefficient * stepSize * density;
             }
         }
     }

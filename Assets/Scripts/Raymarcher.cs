@@ -18,7 +18,7 @@ public class Raymarcher : MonoBehaviour {
     [Range(1, 16)]
     public int frequency = 1;
 
-    [Range(0.1f, 4.0f)]
+    [Range(0.1f, 16.0f)]
     public float amplitude = 1.0f;
 
     [Range(0.01f, 1.0f)]
@@ -27,10 +27,10 @@ public class Raymarcher : MonoBehaviour {
     [Range(1, 10)]
     public int roughness = 2;
     
-    [Range(0.0f, 2.0f)]
+    [Range(0.0f, 5.0f)]
     public float warp = 0.0f;
 
-    [Range(0.0f, 2.0f)]
+    [Range(-5.0f, 5.0f)]
     public float add = 0.0f;
     
     [Range(0.01f, 100.0f)]
@@ -77,6 +77,9 @@ public class Raymarcher : MonoBehaviour {
 
     [Range(0.05f, 1.0f)]
     public float stepSize = 0.05f;
+
+    [Range(0.05f, 1.0f)]
+    public float lightStepSize = 0.15f;
 
     [Range(0.0f, 1.0f)]
     public float jitter = 0.05f;
@@ -227,6 +230,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_BufferWidth", Screen.width);
         raymarchCompute.SetFloat("_BufferHeight", Screen.height);
         raymarchCompute.SetFloat("_StepSize", stepSize);
+        raymarchCompute.SetFloat("_LightStepSize", lightStepSize);
         raymarchCompute.SetFloat("_SmokeSize", smokeSize);
         raymarchCompute.SetFloat("_Jitter", jitter);
         raymarchCompute.SetFloat("_FrameTime", Time.time);
