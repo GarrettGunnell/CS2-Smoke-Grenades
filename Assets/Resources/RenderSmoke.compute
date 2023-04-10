@@ -40,7 +40,7 @@ int _StepCount;
 float _StepSize;
 float _LightStepSize;
 float _SmokeSize;
-float _VolumeDensity, _ShadowDensity, _ShadowThreshold;
+float _VolumeDensity, _ShadowDensity, _ShadowThreshold, _AlphaThreshold;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
 float3 _SmokeColor, _ExtinctionColor;
 float _G;
@@ -291,6 +291,8 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
     // Solve for t in: P = O + tD
     float sceneIntersectDistance = -((origin - sceneWorldPos) / rayDir).x;
+
+    [branch]
     if (hit.z && (hit.x < sceneIntersectDistance) && hit.x > 0) {
         float t1 = hit.x;
         float t2 = min(hit.y, sceneIntersectDistance);
@@ -304,30 +306,45 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         int steps = ceil((t2 - t1) / _StepSize);
         float stepSize = (t2 - t1) / (float)steps;
         float baseDensity = _VolumeDensity * stepSize;
-        float shadowThreshold = -log(_ShadowThreshold) / _ShadowDensity;
+
+        [loop]
         for (int i = 0; i < steps; ++i) {
-            float t = t1 + stepSize * (i + hash(seed * (seed + i)) * _Jitter);
+            float rand = hash(seed * seed * i);
+            float t = t1 + stepSize * (i + rand * _Jitter);
 
             float3 samplePos = origin + t * rayDir;
             float sampleDensity = getDensity(samplePos);
             alpha *= exp(-baseDensity * sampleDensity * extinctionCoefficient);
 
             float3 lightHit = RaycastSmokeMesh(samplePos, -_SunDirection);
+
+            [branch]
             if (lightHit.z && lightHit.x <= 0 && sampleDensity > 0.001) {
                 int lSteps = ceil(lightHit.y / _LightStepSize);
                 float lStepSize = lightHit.y / lSteps;
                 float shadowDensity = _ShadowDensity * lStepSize;
 
                 float tau = 0.0f;
+
+                [loop]
                 for (int j = 0; j < lSteps; ++j) {
-                    float tl = lStepSize * (j + hash(seed +j) * _Jitter);
+                    float lrand = hash(seed * seed * j);
+                    float tl = lStepSize * (j + lrand * _Jitter);
                     float3 lSamplePos = samplePos - tl * _SunDirection;
                     tau += getDensity(lSamplePos);
-                    if (tau > shadowThreshold) break;
+                    if (tau > _ShadowThreshold) {
+                        if (lrand > 0.5f) break;
+                        else tau *= 2.0f;
+                    }
                 }
 
                 float3 lightAttenuation = exp(-(tau / _ExtinctionColor) * extinctionCoefficient * shadowDensity);
                 col += _LightColor * lightAttenuation * alpha * p * _ScatteringCoefficient * baseDensity * sampleDensity;
+            }
+
+            if (alpha < _AlphaThreshold) {
+                if (rand > 0.5f) break;
+                else alpha *= 2;
             }
         }
 

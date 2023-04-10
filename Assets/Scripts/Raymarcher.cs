@@ -105,13 +105,16 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.0f, 3.0f)]
     public float scatteringCoefficient = 0.5f;
 
+    [Range(0.0f, 0.01f)]
+    public float alphaThreshold = 0.0001f;
+
     public Color extinctionColor = new Color(1, 1, 1);
 
     [Range(0.0f, 10.0f)]
     public float shadowDensity = 1.0f;
 
-    [Range(0.0f, 0.5f)]
-    public float shadowThreshold = 0.00001f;
+    [Range(0.0f, 100.0f)]
+    public float shadowThreshold = 50.0f;
 
     public enum PhaseFunction {
         HenyeyGreenstein = 0,
@@ -259,6 +262,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_VolumeDensity", volumeDensity);
         raymarchCompute.SetFloat("_ShadowDensity", shadowDensity);
         raymarchCompute.SetFloat("_ShadowThreshold", shadowThreshold);
+        raymarchCompute.SetFloat("_AlphaThreshold", alphaThreshold);
         raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetVector("_AnimationDirection", animationDirection);
