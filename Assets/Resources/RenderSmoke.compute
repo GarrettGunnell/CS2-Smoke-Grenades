@@ -47,7 +47,6 @@ float _Jitter;
 int _PhaseFunction;
 
 float3 _AnimationDirection;
-float _AnimationSpeed;
 
 int _Octaves;
 float _Persistance, _Amplitude, _Warp, _Add;
@@ -263,7 +262,7 @@ float phase(float g, float cos_theta) {
 
 float getDensity(float3 pos) {
     float3 uvw = pos / _SmokeSize;
-    uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
+    uvw += _AnimationDirection * _FrameTime;
     return (_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
 }
 

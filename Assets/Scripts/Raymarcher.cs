@@ -112,10 +112,7 @@ public class Raymarcher : MonoBehaviour {
 
     [Header("Animation Settings")]
     [Space(5)]
-    public Vector3 animationDirection = new Vector3(0, 1, 0);
-
-    [Range(0.0f, 2.0f)]
-    public float animationSpeed = 0.0f;
+    public Vector3 animationDirection = new Vector3(0, -0.1f, 0);
 
     public enum ViewTexture {
         Composite = 0,
@@ -244,14 +241,11 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_SmokeSize", smokeSize);
         raymarchCompute.SetFloat("_Jitter", jitter);
         raymarchCompute.SetFloat("_FrameTime", Time.time);
-        raymarchCompute.SetFloat("_AnimationSpeed", animationSpeed);
         raymarchCompute.SetFloat("_AbsorptionCoefficient", absorptionCoefficient);
         raymarchCompute.SetFloat("_ScatteringCoefficient", scatteringCoefficient);
         raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
-        Vector3 normalizedAnimationDir = animationDirection;
-        normalizedAnimationDir.Normalize();
-        raymarchCompute.SetVector("_AnimationDirection", new Vector4(normalizedAnimationDir.x, normalizedAnimationDir.y, normalizedAnimationDir.z));
+        raymarchCompute.SetVector("_AnimationDirection", new Vector4(animationDirection.x, animationDirection.y, animationDirection.z));
         raymarchCompute.SetInt("_Shape", (int)sdfShape);
         raymarchCompute.SetInt("_PhaseFunction", (int)phaseFunction);
         raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));

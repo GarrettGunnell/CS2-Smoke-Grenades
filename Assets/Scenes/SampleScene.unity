@@ -793,7 +793,8 @@ MonoBehaviour:
   warp: 0
   add: 0
   period: 32
-  absResult: 1
+  absMode: 2
+  clampNoise: 0
   updateNoise: 0
   debugNoise: 0
   debugTiledNoise: 0
@@ -814,8 +815,7 @@ MonoBehaviour:
   scatteringCoefficient: 0.68
   phaseFunction: 1
   scatteringAnisotropy: 0.37
-  animationDirection: {x: 0.3, y: -1, z: -0.3}
-  animationSpeed: 0.07
+  animationDirection: {x: 0.15, y: -0.1, z: -0.05}
   debugView: 0
 --- !u!1 &1039394212
 GameObject:
