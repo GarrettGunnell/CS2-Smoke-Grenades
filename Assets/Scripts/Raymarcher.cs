@@ -36,7 +36,13 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.01f, 100.0f)]
     public int period = 64;
 
-    public bool absResult = false;
+    public enum AbsMode {
+        NoAbs = 0,
+        AbsWhileSumming,
+        AbsResult
+    } public AbsMode absMode;
+
+    public bool clampNoise = false;
 
     public bool updateNoise = false;
 
@@ -146,7 +152,8 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_Add", add);
         raymarchCompute.SetInt("_Roughness", roughness);
         raymarchCompute.SetInt("_Period", period);
-        raymarchCompute.SetInt("_Abs", absResult ? 1 : 0);
+        raymarchCompute.SetInt("_ClampNoise", clampNoise ? 1 : 0);
+        raymarchCompute.SetInt("_AbsMode", (int)absMode);
 
         raymarchCompute.Dispatch(generateNoisePass, Mathf.CeilToInt(noiseResolution.x / 8.0f), Mathf.CeilToInt(noiseResolution.y / 8.0f), Mathf.CeilToInt(noiseResolution.z / 8.0f));
 

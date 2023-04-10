@@ -51,7 +51,7 @@ float _AnimationSpeed;
 
 int _Octaves;
 float _Persistance, _Amplitude, _Warp, _Add;
-int _CellSize, _Roughness, _Period, _Frequency, _Abs;
+int _CellSize, _Roughness, _Period, _Frequency, _AbsMode, _ClampNoise;
 
 [numthreads(8,8,8)]
 void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
@@ -66,13 +66,17 @@ void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
     float a = _Amplitude;
 
     for (int i = 0; i < _Octaves; ++i) {
-        n += a * PeriodicNoise(pos.xyz * f + i * _Warp, _Period * f);
+        float noise = PeriodicNoise(pos.xyz * f + i * _Warp, _Period * f);
+        noise = (_AbsMode == 1) ? abs(noise) : noise;
+        n += a * noise;
         f *= _Roughness;
         a *= G;
     }
 
     n += _Add;
-    _RWNoiseTex[id.xyz] = saturate(_Abs ? abs(n) : n);
+    n = _AbsMode == 2 ? abs(n) : n;
+
+    _RWNoiseTex[id.xyz] = _ClampNoise ? saturate(n) : max(0, n);
 }
 
 uint _DebugNoiseSlice;
@@ -260,7 +264,7 @@ float phase(float g, float cos_theta) {
 float getDensity(float3 pos) {
     float3 uvw = pos / _SmokeSize;
     uvw += _AnimationDirection * _FrameTime * _AnimationSpeed;
-    return saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
+    return (_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
 }
 
 [numthreads(8,8,1)]
@@ -311,7 +315,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
                 float tau = 0.0f;
                 for (int j = 0; j < lSteps; ++j) {
-                    float tl = lStepSize * (j + hash(seed * (seed + i)) * _Jitter);
+                    float tl = lStepSize * (j + hash(seed * (seed + j)) * _Jitter);
                     float3 lSamplePos = samplePos - tl * _SunDirection;
                     tau += getDensity(lSamplePos);
                 }

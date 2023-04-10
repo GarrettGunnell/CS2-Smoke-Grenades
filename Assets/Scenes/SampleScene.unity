@@ -786,13 +786,14 @@ MonoBehaviour:
   noiseResolution: {x: 128, y: 128, z: 128}
   octaves: 6
   cellSize: 32
-  frequency: 6
-  amplitude: 1
+  frequency: 4
+  amplitude: 3.4
   persistance: 1
   roughness: 6
-  warp: 0.69
+  warp: 0
   add: 0
   period: 32
+  absResult: 1
   updateNoise: 0
   debugNoise: 0
   debugTiledNoise: 0
@@ -803,14 +804,18 @@ MonoBehaviour:
   maxRadius: 3
   growthSpeed: 1
   restartAnimation: 0
-  lightColor: {r: 1, g: 1, b: 1, a: 0}
-  smokeColor: {r: 0, g: 0, b: 0, a: 0}
-  stepCount: 64
-  stepSize: 0.2
-  smokeSize: 32
-  absorptionCoefficient: 0.5
-  animationDirection: {x: 0, y: 1, z: 0}
-  animationSpeed: 0
+  lightColor: {r: 3.5816119, g: 2.7608259, b: 1.4363756, a: 0}
+  smokeColor: {r: 0.05, g: 0.0465, b: 0.043, a: 0}
+  stepSize: 0.05
+  lightStepSize: 0.3
+  jitter: 1
+  smokeSize: 8
+  absorptionCoefficient: 0.67
+  scatteringCoefficient: 0.68
+  phaseFunction: 1
+  scatteringAnisotropy: 0.37
+  animationDirection: {x: 0.3, y: -1, z: -0.3}
+  animationSpeed: 0.07
   debugView: 0
 --- !u!1 &1039394212
 GameObject:
