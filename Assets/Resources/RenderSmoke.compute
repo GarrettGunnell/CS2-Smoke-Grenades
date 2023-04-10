@@ -40,7 +40,7 @@ int _StepCount;
 float _StepSize;
 float _LightStepSize;
 float _SmokeSize;
-float _VolumeDensity, _ShadowDensity;
+float _VolumeDensity, _ShadowDensity, _ShadowThreshold;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
 float3 _SmokeColor, _ExtinctionColor;
 float _G;
@@ -304,6 +304,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         int steps = ceil((t2 - t1) / _StepSize);
         float stepSize = (t2 - t1) / (float)steps;
         float baseDensity = _VolumeDensity * stepSize;
+        float shadowThreshold = -log(_ShadowThreshold) / _ShadowDensity;
         for (int i = 0; i < steps; ++i) {
             float t = t1 + stepSize * (i + hash(seed * (seed + i)) * _Jitter);
 
@@ -317,11 +318,12 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 float lStepSize = lightHit.y / lSteps;
                 float shadowDensity = _ShadowDensity * lStepSize;
 
-                float3 tau = 0.0f;
+                float tau = 0.0f;
                 for (int j = 0; j < lSteps; ++j) {
-                    float tl = lStepSize * (j + 0.5f);
+                    float tl = lStepSize * (j + hash(seed +j) * _Jitter);
                     float3 lSamplePos = samplePos - tl * _SunDirection;
                     tau += getDensity(lSamplePos);
+                    if (tau > shadowThreshold) break;
                 }
 
                 float3 lightAttenuation = exp(-(tau / _ExtinctionColor) * extinctionCoefficient * shadowDensity);
