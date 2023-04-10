@@ -81,6 +81,7 @@ public class Raymarcher : MonoBehaviour {
     [Space(5)]
     [ColorUsageAttribute(false, true)]
     public Color lightColor;
+
     public Color smokeColor;
 
     [Range(0.05f, 1.0f)]
@@ -95,11 +96,13 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.01f, 64.0f)]
     public float smokeSize = 32.0f;
 
-    [Range(0.01f, 2.0f)]
+    [Range(0.0f, 3.0f)]
     public float absorptionCoefficient = 0.5f;
 
-    [Range(0.01f, 2.0f)]
+    [Range(0.0f, 3.0f)]
     public float scatteringCoefficient = 0.5f;
+
+    public Color extinctionColor = new Color(1, 1, 1);
 
     public enum PhaseFunction {
         HenyeyGreenstein = 0,
@@ -245,13 +248,14 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_ScatteringCoefficient", scatteringCoefficient);
         raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
-        raymarchCompute.SetVector("_AnimationDirection", new Vector4(animationDirection.x, animationDirection.y, animationDirection.z));
+        raymarchCompute.SetVector("_AnimationDirection", animationDirection);
         raymarchCompute.SetInt("_Shape", (int)sdfShape);
         raymarchCompute.SetInt("_PhaseFunction", (int)phaseFunction);
         raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
         raymarchCompute.SetVector("_CubeParams", cubeParams);
         raymarchCompute.SetVector("_LightColor", lightColor);
         raymarchCompute.SetVector("_SmokeColor", smokeColor);
+        raymarchCompute.SetVector("_ExtinctionColor", extinctionColor);
 
         if (debugNoise) {
             raymarchCompute.SetTexture(debugNoisePass, "_NoiseTex", noiseTex);

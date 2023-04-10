@@ -41,7 +41,7 @@ float _StepSize;
 float _LightStepSize;
 float _SmokeSize;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
-float3 _SmokeColor;
+float3 _SmokeColor, _ExtinctionColor;
 float _G;
 float _Jitter;
 int _PhaseFunction;
@@ -295,6 +295,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
         col = _SmokeColor;
         float extinctionCoefficient = _AbsorptionCoefficient + _ScatteringCoefficient;
+
         float cos_theta = dot(rayDir, -_SunDirection);
         float p = phase(_G, cos_theta);
 
@@ -312,14 +313,14 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 int lSteps = ceil(lightHit.y / _LightStepSize);
                 float lStepSize = lightHit.y / lSteps;
 
-                float tau = 0.0f;
+                float3 tau = 0.0f;
                 for (int j = 0; j < lSteps; ++j) {
                     float tl = lStepSize * (j + hash(seed * (seed + j)) * _Jitter);
                     float3 lSamplePos = samplePos - tl * _SunDirection;
-                    tau += getDensity(lSamplePos);
+                    tau += getDensity(lSamplePos) / _ExtinctionColor;
                 }
 
-                float lightAttenuation = exp(-tau * extinctionCoefficient * lStepSize);
+                float3 lightAttenuation = exp(-tau * extinctionCoefficient * lStepSize);
                 col += _LightColor * lightAttenuation * alpha * p * _ScatteringCoefficient * stepSize * density;
             }
         }
