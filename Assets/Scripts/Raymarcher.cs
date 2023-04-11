@@ -84,14 +84,11 @@ public class Raymarcher : MonoBehaviour {
 
     public Color smokeColor;
 
-    [Range(0.05f, 1.0f)]
-    public float stepSize = 0.05f;
+    [Range(1, 128)]
+    public int stepCount = 64;
 
-    [Range(0.05f, 1.0f)]
-    public float lightStepSize = 0.15f;
-
-    [Range(0.0f, 1.0f)]
-    public float jitter = 0.05f;
+    [Range(1, 32)]
+    public int lightStepCount = 8;
 
     [Range(0.01f, 64.0f)]
     public float smokeSize = 32.0f;
@@ -105,16 +102,10 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.0f, 3.0f)]
     public float scatteringCoefficient = 0.5f;
 
-    [Range(0.0f, 0.01f)]
-    public float alphaThreshold = 0.0001f;
-
     public Color extinctionColor = new Color(1, 1, 1);
 
     [Range(0.0f, 10.0f)]
     public float shadowDensity = 1.0f;
-
-    [Range(0.0f, 100.0f)]
-    public float shadowThreshold = 50.0f;
 
     public enum PhaseFunction {
         HenyeyGreenstein = 0,
@@ -252,17 +243,14 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetMatrix("_CameraInvViewProjection", viewProjMatrix.inverse);
         raymarchCompute.SetFloat("_BufferWidth", Screen.width);
         raymarchCompute.SetFloat("_BufferHeight", Screen.height);
-        raymarchCompute.SetFloat("_StepSize", stepSize);
-        raymarchCompute.SetFloat("_LightStepSize", lightStepSize);
+        raymarchCompute.SetInt("_StepCount", stepCount);
+        raymarchCompute.SetInt("_LightStepCount", lightStepCount);
         raymarchCompute.SetFloat("_SmokeSize", smokeSize);
-        raymarchCompute.SetFloat("_Jitter", jitter);
         raymarchCompute.SetFloat("_FrameTime", Time.time);
         raymarchCompute.SetFloat("_AbsorptionCoefficient", absorptionCoefficient);
         raymarchCompute.SetFloat("_ScatteringCoefficient", scatteringCoefficient);
         raymarchCompute.SetFloat("_VolumeDensity", volumeDensity);
         raymarchCompute.SetFloat("_ShadowDensity", shadowDensity);
-        raymarchCompute.SetFloat("_ShadowThreshold", shadowThreshold);
-        raymarchCompute.SetFloat("_AlphaThreshold", alphaThreshold);
         raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetVector("_AnimationDirection", animationDirection);

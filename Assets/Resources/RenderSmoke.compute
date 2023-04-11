@@ -37,10 +37,9 @@ float _Radius;
 float4 _CubeParams;
 
 int _StepCount;
-float _StepSize;
-float _LightStepSize;
+int _LightStepCount;
 float _SmokeSize;
-float _VolumeDensity, _ShadowDensity, _ShadowThreshold, _AlphaThreshold;
+float _VolumeDensity, _ShadowDensity;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
 float3 _SmokeColor, _ExtinctionColor;
 float _G;
@@ -303,12 +302,11 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         float cos_theta = dot(rayDir, -_SunDirection);
         float p = phase(_G, cos_theta);
 
-        int steps = ceil((t2 - t1) / _StepSize);
-        float stepSize = (t2 - t1) / 128.0f;
+        float stepSize = (t2 - t1) / (float)_StepCount;
         float baseDensity = _VolumeDensity * stepSize;
 
         [loop]
-        for (int i = 0; i < 128; ++i) {
+        for (int i = 0; i < _StepCount; ++i) {
             float t = t1 + stepSize * i;
 
             float3 samplePos = origin + t * rayDir;
@@ -319,14 +317,13 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
             [branch]
             if (lightHit.z && lightHit.x <= 0 && sampleDensity > 0.001) {
-                int lSteps = ceil(lightHit.y / _LightStepSize);
-                float lStepSize = lightHit.y / 6.0f;
+                float lStepSize = lightHit.y / (float)_LightStepCount;
                 float shadowDensity = _ShadowDensity * lStepSize;
 
                 float tau = 0.0f;
 
                 [loop]
-                for (int j = 0; j < 6; ++j) {
+                for (int j = 0; j < _LightStepCount; ++j) {
                     float tl = lStepSize * j;
                     float3 lSamplePos = samplePos - tl * _SunDirection;
                     tau += getDensity(lSamplePos);
@@ -340,7 +337,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 aoTerm += getDensity(samplePos + float3(0.0f, 0.1f, 0.0f));
                 aoTerm += getDensity(samplePos + float3(0.0f, 0.2f, 0.0f));
 
-                col += exp(-(aoTerm / _ExtinctionColor) * 10.0f * extinctionCoefficient * 0.1f) * alpha * Rayleigh(cos_theta) * _ScatteringCoefficient * baseDensity * sampleDensity * 3.0f;
+                col += exp(-(aoTerm / _ExtinctionColor) * 10.0f * extinctionCoefficient * 0.1f) * alpha * p * _ScatteringCoefficient * baseDensity * sampleDensity * 3.0f;
             }
         }
 
