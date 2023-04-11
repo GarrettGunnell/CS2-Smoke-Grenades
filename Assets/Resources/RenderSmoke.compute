@@ -77,7 +77,7 @@ void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
     n += _Add;
     n = _AbsMode == 2 ? abs(n) : n;
 
-    _RWNoiseTex[id.xyz] = _ClampNoise ? saturate(n) : max(0, n);
+    _RWNoiseTex[id.xyz] = _ClampNoise ? 1 - saturate(n) : max(0, n);
 }
 
 uint _DebugNoiseSlice;
@@ -304,13 +304,12 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         float p = phase(_G, cos_theta);
 
         int steps = ceil((t2 - t1) / _StepSize);
-        float stepSize = (t2 - t1) / (float)steps;
+        float stepSize = (t2 - t1) / 128.0f;
         float baseDensity = _VolumeDensity * stepSize;
 
         [loop]
-        for (int i = 0; i < steps; ++i) {
-            float rand = hash(seed * seed * i);
-            float t = t1 + stepSize * (i + rand * _Jitter);
+        for (int i = 0; i < 128; ++i) {
+            float t = t1 + stepSize * i;
 
             float3 samplePos = origin + t * rayDir;
             float sampleDensity = getDensity(samplePos);
@@ -321,30 +320,27 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             [branch]
             if (lightHit.z && lightHit.x <= 0 && sampleDensity > 0.001) {
                 int lSteps = ceil(lightHit.y / _LightStepSize);
-                float lStepSize = lightHit.y / lSteps;
+                float lStepSize = lightHit.y / 6.0f;
                 float shadowDensity = _ShadowDensity * lStepSize;
 
                 float tau = 0.0f;
 
                 [loop]
-                for (int j = 0; j < lSteps; ++j) {
-                    float lrand = hash(seed * seed * j);
-                    float tl = lStepSize * (j + lrand * _Jitter);
+                for (int j = 0; j < 6; ++j) {
+                    float tl = lStepSize * j;
                     float3 lSamplePos = samplePos - tl * _SunDirection;
                     tau += getDensity(lSamplePos);
-                    if (tau > _ShadowThreshold) {
-                        if (lrand > 0.5f) break;
-                        else tau *= 2.0f;
-                    }
                 }
 
                 float3 lightAttenuation = exp(-(tau / _ExtinctionColor) * extinctionCoefficient * shadowDensity);
                 col += _LightColor * lightAttenuation * alpha * p * _ScatteringCoefficient * baseDensity * sampleDensity;
-            }
 
-            if (alpha < _AlphaThreshold) {
-                if (rand > 0.5f) break;
-                else alpha *= 2;
+                //Compute AO
+                float aoTerm = getDensity(samplePos + float3(0.0f, 0.05f, 0.0f));
+                aoTerm += getDensity(samplePos + float3(0.0f, 0.1f, 0.0f));
+                aoTerm += getDensity(samplePos + float3(0.0f, 0.2f, 0.0f));
+
+                col += exp(-(aoTerm / _ExtinctionColor) * 10.0f * extinctionCoefficient * 0.1f) * alpha * Rayleigh(cos_theta) * _ScatteringCoefficient * baseDensity * sampleDensity * 3.0f;
             }
         }
 
