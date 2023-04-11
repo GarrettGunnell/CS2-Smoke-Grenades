@@ -301,6 +301,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
         float cos_theta = dot(rayDir, -_SunDirection);
         float p = phase(_G, cos_theta);
+        float pl = Rayleigh(cos_theta);
 
         float stepSize = (t2 - t1) / (float)_StepCount;
         float baseDensity = _VolumeDensity * stepSize;
@@ -337,13 +338,9 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 aoTerm += getDensity(samplePos + float3(0.0f, 0.1f, 0.0f));
                 aoTerm += getDensity(samplePos + float3(0.0f, 0.2f, 0.0f));
 
-                col += _AmbientColor * exp(-(aoTerm / _ExtinctionColor) * _AmbientDensity * extinctionCoefficient * 0.1f) * alpha * Rayleigh(cos_theta) * _ScatteringCoefficient * baseDensity * sampleDensity;
+                col += _AmbientColor * exp(-(aoTerm / _ExtinctionColor) * _AmbientDensity * extinctionCoefficient * 0.1f) * alpha * pl * _ScatteringCoefficient * baseDensity * sampleDensity;
             }
         }
-
-        // Compute Ambient Occlusion
-        //float shadow = getDensity();
-
     }
 
     //_SmokeTex[id.xy] = (smokeIntersectDistance < sceneIntersectDistance);
