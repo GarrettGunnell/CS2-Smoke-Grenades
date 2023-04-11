@@ -107,6 +107,12 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.0f, 10.0f)]
     public float shadowDensity = 1.0f;
 
+    [ColorUsageAttribute(false, true)]
+    public Color ambientColor = new Color(1, 1, 1);
+
+    [Range(0.0f, 10.0f)]
+    public float ambientDensity = 1.0f;
+
     public enum PhaseFunction {
         HenyeyGreenstein = 0,
         Mie,
@@ -251,6 +257,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_ScatteringCoefficient", scatteringCoefficient);
         raymarchCompute.SetFloat("_VolumeDensity", volumeDensity);
         raymarchCompute.SetFloat("_ShadowDensity", shadowDensity);
+        raymarchCompute.SetFloat("_AmbientDensity", ambientDensity * 10.0f);
         raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetVector("_AnimationDirection", animationDirection);
@@ -261,6 +268,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetVector("_LightColor", lightColor);
         raymarchCompute.SetVector("_SmokeColor", smokeColor);
         raymarchCompute.SetVector("_ExtinctionColor", extinctionColor);
+        raymarchCompute.SetVector("_AmbientColor", ambientColor);
 
         if (debugNoise) {
             raymarchCompute.SetTexture(debugNoisePass, "_NoiseTex", noiseTex);

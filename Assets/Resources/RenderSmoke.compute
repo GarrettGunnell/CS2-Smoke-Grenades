@@ -39,9 +39,9 @@ float4 _CubeParams;
 int _StepCount;
 int _LightStepCount;
 float _SmokeSize;
-float _VolumeDensity, _ShadowDensity;
+float _VolumeDensity, _ShadowDensity, _AmbientDensity;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
-float3 _SmokeColor, _ExtinctionColor;
+float3 _SmokeColor, _ExtinctionColor, _AmbientColor;
 float _G;
 float _Jitter;
 int _PhaseFunction;
@@ -337,7 +337,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 aoTerm += getDensity(samplePos + float3(0.0f, 0.1f, 0.0f));
                 aoTerm += getDensity(samplePos + float3(0.0f, 0.2f, 0.0f));
 
-                col += exp(-(aoTerm / _ExtinctionColor) * 10.0f * extinctionCoefficient * 0.1f) * alpha * p * _ScatteringCoefficient * baseDensity * sampleDensity * 3.0f;
+                col += _AmbientColor * exp(-(aoTerm / _ExtinctionColor) * _AmbientDensity * extinctionCoefficient * 0.1f) * alpha * Rayleigh(cos_theta) * _ScatteringCoefficient * baseDensity * sampleDensity;
             }
         }
 
