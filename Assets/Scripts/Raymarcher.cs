@@ -4,6 +4,11 @@ using UnityEngine;
 
 [RequireComponent(typeof(Camera))]
 public class Raymarcher : MonoBehaviour {
+    public enum Res {
+        FullResolution = 0,
+        HalfResolution,
+        QuarterResolution
+    } public Res resolutionScale;
 
     [Header("Noise Settings")]
     [Space(5)]
@@ -145,6 +150,7 @@ public class Raymarcher : MonoBehaviour {
     private ComputeShader raymarchCompute;
 
     private int generateNoisePass, debugNoisePass, raymarchSmokePass;
+    private int bufferWidth, bufferHeight;
     
     private RenderTexture noiseTex, smokeMaskTex, smokeTex, smokeDepthTex, depthTex;
 
@@ -189,6 +195,9 @@ public class Raymarcher : MonoBehaviour {
     }
 
     void InitializeVariables() {
+        bufferWidth = Mathf.CeilToInt(Screen.width / Mathf.Pow(2.0f, (int)resolutionScale));
+        bufferHeight = Mathf.CeilToInt(Screen.height / Mathf.Pow(2.0f, (int)resolutionScale));
+
         compositeMaterial = new Material(Shader.Find("Hidden/CompositeEffects"));
         raymarchCompute = (ComputeShader)Resources.Load("RenderSmoke");
 
@@ -198,19 +207,19 @@ public class Raymarcher : MonoBehaviour {
 
         InitializeNoise();
 
-        smokeTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
+        smokeTex = new RenderTexture(bufferWidth, bufferHeight, 0, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
         smokeTex.enableRandomWrite = true;
         smokeTex.Create();
 
-        smokeDepthTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
+        smokeDepthTex = new RenderTexture(bufferWidth, bufferHeight, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
         smokeDepthTex.enableRandomWrite = true;
         smokeDepthTex.Create();
 
-        depthTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
+        depthTex = new RenderTexture(bufferWidth, bufferHeight, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
         depthTex.enableRandomWrite = true;
         depthTex.Create();
 
-        smokeMaskTex = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
+        smokeMaskTex = new RenderTexture(bufferWidth, bufferHeight, 0, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
         smokeMaskTex.enableRandomWrite = true;
         smokeMaskTex.Create();
 
@@ -294,7 +303,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeMaskTex", smokeMaskTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_NoiseTex", noiseTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_DepthTex", depthTex);
-        raymarchCompute.Dispatch(raymarchSmokePass, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
+        raymarchCompute.Dispatch(raymarchSmokePass, Mathf.CeilToInt(bufferWidth / 8.0f), Mathf.CeilToInt(bufferHeight / 8.0f), 1);
 
         // Composite volumes with source buffer
         compositeMaterial.SetTexture("_SmokeTex", smokeTex);
