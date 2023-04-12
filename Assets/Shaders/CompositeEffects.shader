@@ -40,10 +40,10 @@ Shader "Hidden/CompositeEffects" {
             #pragma fragment fp
 
             float4 fp(v2f i) : SV_Target {
-                float n = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + (0, 1) * _MainTex_TexelSize.xy);
-                float e = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + (1, 0) * _MainTex_TexelSize.xy);
-                float s = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + (0, -1) * _MainTex_TexelSize.xy);
-                float w = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + (-1, 0) * _MainTex_TexelSize.xy);
+                float n = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + float2(0, 1) * _MainTex_TexelSize.xy);
+                float e = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + float2(1, 0) * _MainTex_TexelSize.xy);
+                float s = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + float2(0, -1) * _MainTex_TexelSize.xy);
+                float w = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + float2(-1, 0) * _MainTex_TexelSize.xy);
                 return min(n, min(s, min(e, w)));
             }
 
@@ -55,7 +55,7 @@ Shader "Hidden/CompositeEffects" {
             #pragma vertex vp
             #pragma fragment fp
 
-            sampler2D _SmokeTex, _SmokeDepthTex, _SmokeMaskTex;
+            sampler2D _SmokeTex, _SmokeDepthTex;
             Texture2D _DepthTex;
             int _DebugView;
 
@@ -64,15 +64,14 @@ Shader "Hidden/CompositeEffects" {
                 float4 col = tex2D(_MainTex, i.uv);
                 float4 smokeAlbedo = tex2D(_SmokeTex, i.uv);
                 float smokeDepth = tex2D(_SmokeDepthTex, i.uv).r;
-                float smokeMask = saturate(tex2D(_SmokeMaskTex, i.uv).r);
 
                 switch (_DebugView) {
                     case 0:
-                        return lerp(col, smokeAlbedo, 1 - smokeMask);
+                        return lerp(col, float4(smokeAlbedo.rgb, 1.0f), 1 - smokeAlbedo.a);
                     case 1:
                         return smokeAlbedo;
                     case 2:
-                        return smokeMask;
+                        return smokeAlbedo.a;
                     case 3:
                         return smokeDepth;
                     case 4:

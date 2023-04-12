@@ -18,7 +18,6 @@ SamplerState linear_repeat_sampler;
 
 RWTexture2D<float4> _SmokeTex;
 RWTexture2D<float> _SmokeDepthTex;
-RWTexture2D<half> _SmokeMaskTex;
 
 Texture2D<half> _DepthTex;
 
@@ -347,8 +346,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         }
     }
 
-    _SmokeTex[id.xy] = float4(saturate(col), 1.0f) * (1 - alpha);
-    _SmokeMaskTex[id.xy] = saturate(alpha);
+    _SmokeTex[id.xy] = float4(saturate(col) * (1 - alpha), alpha);
 
     // Calculate clip depth
     float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));
