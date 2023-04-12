@@ -219,6 +219,10 @@ public class Raymarcher : MonoBehaviour {
         depthTex.enableRandomWrite = true;
         depthTex.Create();
 
+        smokeMaskTex = new RenderTexture(bufferWidth, bufferHeight, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+        smokeMaskTex.enableRandomWrite = true;
+        smokeMaskTex.Create();
+
         cam = GetComponent<Camera>();
         sun = GameObject.Find("Directional Light");
 
@@ -296,6 +300,7 @@ public class Raymarcher : MonoBehaviour {
         // Render volumes
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeTex", smokeTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeDepthTex", smokeDepthTex);
+        raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeMaskTex", smokeMaskTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_NoiseTex", noiseTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_DepthTex", depthTex);
         raymarchCompute.Dispatch(raymarchSmokePass, Mathf.CeilToInt(bufferWidth / 8.0f), Mathf.CeilToInt(bufferHeight / 8.0f), 1);
@@ -303,6 +308,7 @@ public class Raymarcher : MonoBehaviour {
         // Composite volumes with source buffer
         compositeMaterial.SetTexture("_SmokeTex", smokeTex);
         compositeMaterial.SetTexture("_SmokeDepthTex", smokeDepthTex);
+        compositeMaterial.SetTexture("_SmokeMaskTex", smokeMaskTex);
         compositeMaterial.SetTexture("_DepthTex", depthTex);
         compositeMaterial.SetFloat("_DebugView", (int)debugView);
 

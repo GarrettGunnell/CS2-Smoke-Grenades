@@ -55,7 +55,7 @@ Shader "Hidden/CompositeEffects" {
             #pragma vertex vp
             #pragma fragment fp
 
-            sampler2D _SmokeTex, _SmokeDepthTex;
+            sampler2D _SmokeTex, _SmokeDepthTex, _SmokeMaskTex;
             Texture2D _DepthTex;
             int _DebugView;
 
@@ -64,14 +64,15 @@ Shader "Hidden/CompositeEffects" {
                 float4 col = tex2D(_MainTex, i.uv);
                 float4 smokeAlbedo = tex2D(_SmokeTex, i.uv);
                 float smokeDepth = tex2D(_SmokeDepthTex, i.uv).r;
+                float smokeMask = saturate(tex2D(_SmokeMaskTex, i.uv).r);
 
                 switch (_DebugView) {
                     case 0:
-                        return lerp(col, float4(smokeAlbedo.rgb, 1.0f), 1 - smokeAlbedo.a);
+                        return lerp(col, smokeAlbedo, 1 - smokeMask);
                     case 1:
                         return smokeAlbedo;
                     case 2:
-                        return smokeAlbedo.a;
+                        return smokeMask;
                     case 3:
                         return smokeDepth;
                     case 4:
