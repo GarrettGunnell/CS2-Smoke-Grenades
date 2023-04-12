@@ -9,7 +9,10 @@ Shader "Hidden/CompositeEffects" {
         #include "UnityCG.cginc"
         #include "UnityStandardBRDF.cginc"
 
-        sampler2D _MainTex, _CameraDepthTexture;
+        sampler2D _MainTex;
+        texture2D _CameraDepthTexture;
+        SamplerState point_clamp_sampler;
+        SamplerState linear_clamp_sampler;
         float4 _MainTex_TexelSize;
         float4 _MainTex_ST;
 
@@ -37,7 +40,11 @@ Shader "Hidden/CompositeEffects" {
             #pragma fragment fp
 
             float4 fp(v2f i) : SV_Target {
-                return SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
+                float n = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + (0, 1) * _MainTex_TexelSize.xy);
+                float e = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + (1, 0) * _MainTex_TexelSize.xy);
+                float s = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + (0, -1) * _MainTex_TexelSize.xy);
+                float w = _CameraDepthTexture.Sample(point_clamp_sampler, i.uv + (-1, 0) * _MainTex_TexelSize.xy);
+                return min(n, min(s, min(e, w)));
             }
 
             ENDCG
@@ -49,6 +56,7 @@ Shader "Hidden/CompositeEffects" {
             #pragma fragment fp
 
             sampler2D _SmokeTex, _SmokeDepthTex, _SmokeMaskTex;
+            Texture2D _DepthTex;
             int _DebugView;
 
 
@@ -68,7 +76,7 @@ Shader "Hidden/CompositeEffects" {
                     case 3:
                         return smokeDepth;
                     case 4:
-                        return SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
+                        return _DepthTex.Sample(point_clamp_sampler, i.uv);
                 }
 
                 return float4(1, 0, 1, 0);

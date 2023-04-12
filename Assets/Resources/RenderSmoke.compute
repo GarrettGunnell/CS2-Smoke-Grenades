@@ -13,6 +13,7 @@
 
 RWTexture3D<half> _RWNoiseTex;
 Texture3D<half> _NoiseTex;
+SamplerState point_repeat_sampler;
 SamplerState linear_repeat_sampler;
 
 RWTexture2D<float4> _SmokeTex;
@@ -274,7 +275,7 @@ float getDensity(float3 pos) {
 [numthreads(8,8,1)]
 void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight)) * 4;
-    float sceneDepth = _DepthTex.SampleLevel(linear_repeat_sampler, uv, 0).r;
+    float sceneDepth = _DepthTex.SampleLevel(point_repeat_sampler, uv, 0).r;
 
     float3 sceneWorldPos = ComputeWorldSpacePosition(uv, sceneDepth);
 
