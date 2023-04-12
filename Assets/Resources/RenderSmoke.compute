@@ -43,7 +43,7 @@ float _VolumeDensity, _ShadowDensity, _AmbientDensity;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
 float3 _SmokeColor, _ExtinctionColor, _AmbientColor;
 float _G;
-float _Jitter;
+float _DensityFalloff;
 int _PhaseFunction;
 
 float3 _AnimationDirection;
@@ -76,7 +76,7 @@ void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
     n += _Add;
     n = _AbsMode == 2 ? abs(n) : n;
 
-    _RWNoiseTex[id.xyz] = _ClampNoise ? 1 - saturate(n) : max(0, n);
+    _RWNoiseTex[id.xyz] = _ClampNoise ? saturate(n) : max(0, n);
 }
 
 uint _DebugNoiseSlice;
@@ -264,7 +264,11 @@ float phase(float g, float cos_theta) {
 float getDensity(float3 pos) {
     float3 uvw = pos / _SmokeSize;
     uvw += _AnimationDirection * _FrameTime;
-    return (_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r);
+    float3 vp = pos - _CubeParams.xyz;
+    float dist = min(1.0f, dot(vp, vp) / (_Radius * _Radius));
+    float falloff = smoothstep(_DensityFalloff, 1.0f, dist);
+
+    return saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r * (1 - falloff));
 }
 
 [numthreads(8,8,1)]
@@ -317,7 +321,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             float3 lightHit = RaycastSmokeMesh(samplePos, -_SunDirection);
 
             [branch]
-            if (lightHit.z && lightHit.x <= 0 && sampleDensity > 0.001) {
+            if (lightHit.z && lightHit.x <= 0 && sampleDensity > 0.00) {
                 float lStepSize = lightHit.y / (float)_LightStepCount;
                 float shadowDensity = _ShadowDensity * lStepSize;
 

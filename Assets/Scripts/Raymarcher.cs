@@ -7,8 +7,6 @@ public class Raymarcher : MonoBehaviour {
 
     [Header("Noise Settings")]
     [Space(5)]
-    public Vector3 noiseResolution = new Vector3(128, 128, 128);
-
     [Range(1, 16)]
     public int octaves = 1;
 
@@ -122,6 +120,10 @@ public class Raymarcher : MonoBehaviour {
     [Range(-1.0f, 1.0f)]
     public float scatteringAnisotropy = 0.0f;
 
+    
+    [Range(0.0f, 1.0f)]
+    public float densityFalloff = 0.25f;
+
     [Header("Animation Settings")]
     [Space(5)]
     public Vector3 animationDirection = new Vector3(0, -0.1f, 0);
@@ -163,9 +165,10 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetInt("_Period", period);
         raymarchCompute.SetInt("_ClampNoise", clampNoise ? 1 : 0);
         raymarchCompute.SetInt("_AbsMode", (int)absMode);
-        raymarchCompute.SetVector("_NoiseRes", noiseResolution);
+        raymarchCompute.SetVector("_NoiseRes", new Vector4(128, 128, 128, 0));
 
-        raymarchCompute.Dispatch(generateNoisePass, Mathf.CeilToInt(noiseResolution.x / 8.0f), Mathf.CeilToInt(noiseResolution.y / 8.0f), Mathf.CeilToInt(noiseResolution.z / 8.0f));
+        // 128 / 8
+        raymarchCompute.Dispatch(generateNoisePass, 16, 16, 16);
 
         raymarchCompute.SetTexture(raymarchSmokePass, "_NoiseTex", noiseTex);
     }
@@ -176,10 +179,10 @@ public class Raymarcher : MonoBehaviour {
             return;
         }
         
-        noiseTex = new RenderTexture((int)noiseResolution.x, (int)noiseResolution.y, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
+        noiseTex = new RenderTexture(128, 128, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
         noiseTex.enableRandomWrite = true;
         noiseTex.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
-        noiseTex.volumeDepth = (int)noiseResolution.z;
+        noiseTex.volumeDepth = 128;
         noiseTex.Create();
 
         UpdateNoise();
@@ -255,6 +258,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_FrameTime", Time.time);
         raymarchCompute.SetFloat("_AbsorptionCoefficient", absorptionCoefficient);
         raymarchCompute.SetFloat("_ScatteringCoefficient", scatteringCoefficient);
+        raymarchCompute.SetFloat("_DensityFalloff", 1 - densityFalloff);
         raymarchCompute.SetFloat("_VolumeDensity", volumeDensity);
         raymarchCompute.SetFloat("_ShadowDensity", shadowDensity);
         raymarchCompute.SetFloat("_AmbientDensity", ambientDensity * 10.0f);
@@ -276,7 +280,7 @@ public class Raymarcher : MonoBehaviour {
             raymarchCompute.SetInt("_DebugNoiseSlice", debugNoiseSlice);
             raymarchCompute.SetInt("_DebugAxis", (int)debugNoiseAxis);
             raymarchCompute.SetInt("_DebugTiledNoise", debugTiledNoise ? 1 : 0);
-            raymarchCompute.SetVector("_NoiseRes", noiseResolution);
+            raymarchCompute.SetVector("_NoiseRes", new Vector4(128, 128, 128, 0));
 
             raymarchCompute.Dispatch(debugNoisePass, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
 
