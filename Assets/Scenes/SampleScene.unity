@@ -783,7 +783,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea8210bf91c402945aa5ce5f8345d2ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  noiseResolution: {x: 128, y: 128, z: 128}
+  resolutionScale: 2
   octaves: 6
   cellSize: 32
   frequency: 4
@@ -807,19 +807,19 @@ MonoBehaviour:
   restartAnimation: 0
   lightColor: {r: 3.5816119, g: 2.7608259, b: 1.4363756, a: 0}
   smokeColor: {r: 0.05, g: 0.0465, b: 0.043, a: 0}
-  stepSize: 0.05
-  lightStepSize: 0.3
-  jitter: 1
+  stepCount: 64
+  lightStepCount: 8
   smokeSize: 8
   volumeDensity: 1
   absorptionCoefficient: 0.5
   scatteringCoefficient: 0.5
-  alphaThreshold: 0.0001
   extinctionColor: {r: 1, g: 1, b: 1, a: 1}
   shadowDensity: 1
-  shadowThreshold: 15
+  ambientColor: {r: 1, g: 1, b: 1, a: 1}
+  ambientDensity: 1
   phaseFunction: 1
   scatteringAnisotropy: 0.37
+  densityFalloff: 0.25
   animationDirection: {x: 0.15, y: -0.1, z: -0.05}
   debugView: 0
 --- !u!1 &1039394212

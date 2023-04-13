@@ -29,9 +29,9 @@ float4x4 _CameraToWorld;
 float4x4 _CameraInvProjection;
 float4x4 _CameraViewProjection;
 float4x4 _CameraInvViewProjection;
-float _BufferWidth;
-float _BufferHeight;
+int _BufferWidth, _BufferHeight;
 float _FrameTime;
+int _DownscaleFactor;
 
 uint _Shape;
 float _Radius;
@@ -274,7 +274,7 @@ float getDensity(float3 pos) {
 
 [numthreads(8,8,1)]
 void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
-    float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight)) * 4;
+    float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight));
     float sceneDepth = _DepthTex.SampleLevel(point_repeat_sampler, uv, 0).r;
 
     float3 sceneWorldPos = ComputeWorldSpacePosition(uv, sceneDepth);
@@ -321,7 +321,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             float3 lightHit = RaycastSmokeMesh(samplePos, -_SunDirection);
 
             [branch]
-            if (lightHit.z && lightHit.x <= 0 && sampleDensity > 0.00) {
+            if (lightHit.z && lightHit.x <= 0 && sampleDensity > 0.0001) {
                 float lStepSize = lightHit.y / (float)_LightStepCount;
                 float shadowDensity = _ShadowDensity * lStepSize;
 
@@ -347,10 +347,6 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         }
     }
 
-    _SmokeTex[id.xy] = float4(saturate(col), 1.0f) * (1 - alpha);
+    _SmokeTex[id.xy] = float4(saturate(col) * (1 - alpha), 1.0f);
     _SmokeMaskTex[id.xy] = saturate(alpha);
-
-    // Calculate clip depth
-    float4 clipPos = mul(_CameraViewProjection, float4(hitPos.xyz, 1.0f));
-    _SmokeDepthTex[id.xy] = (clipPos.z / clipPos.w) * (1 - alpha);
 }
