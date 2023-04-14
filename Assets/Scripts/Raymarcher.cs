@@ -133,6 +133,10 @@ public class Raymarcher : MonoBehaviour {
     [Space(5)]
     public Vector3 animationDirection = new Vector3(0, -0.1f, 0);
 
+    [Header("Composite Settings")]
+    [Space(5)]
+    public bool bicubicUpscale = true;
+
     public enum ViewTexture {
         Composite = 0,
         SmokeAlbedo,
@@ -149,7 +153,6 @@ public class Raymarcher : MonoBehaviour {
     private ComputeShader raymarchCompute;
 
     private int generateNoisePass, debugNoisePass, raymarchSmokePass;
-    private int bufferWidth, bufferHeight;
     
     private RenderTexture noiseTex, depthTex;
     private RenderTexture smokeAlbedoFullTex, smokeAlbedoHalfTex, smokeAlbedoQuarterTex;
@@ -196,9 +199,6 @@ public class Raymarcher : MonoBehaviour {
     }
 
     void InitializeVariables() {
-        bufferWidth = Mathf.CeilToInt(Screen.width / Mathf.Pow(2, (int)resolutionScale));
-        bufferHeight = Mathf.CeilToInt(Screen.height / Mathf.Pow(2, (int)resolutionScale));
-
         compositeMaterial = new Material(Shader.Find("Hidden/CompositeEffects"));
         raymarchCompute = (ComputeShader)Resources.Load("RenderSmoke");
 
@@ -258,9 +258,6 @@ public class Raymarcher : MonoBehaviour {
         if (updateNoise) {
             UpdateNoise();
         }
-
-        bufferWidth = Mathf.CeilToInt(Screen.width / Mathf.Pow(2, (int)resolutionScale));
-        bufferHeight = Mathf.CeilToInt(Screen.height / Mathf.Pow(2, (int)resolutionScale));
     }
 
     private RenderTexture GetSmokeAlbedoTex() {
@@ -290,6 +287,9 @@ public class Raymarcher : MonoBehaviour {
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination) {
+        RenderTexture smokeTex = GetSmokeAlbedoTex();
+        RenderTexture smokeMaskTex = GetSmokeMaskTex();
+
         //Create depth tex for compute shader
         Graphics.Blit(source, depthTex, compositeMaterial, 0);
 
@@ -301,8 +301,8 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetMatrix("_CameraInvProjection", projMatrix.inverse);
         raymarchCompute.SetMatrix("_CameraViewProjection", viewProjMatrix);
         raymarchCompute.SetMatrix("_CameraInvViewProjection", viewProjMatrix.inverse);
-        raymarchCompute.SetInt("_BufferWidth", bufferWidth);
-        raymarchCompute.SetInt("_BufferHeight", bufferHeight);
+        raymarchCompute.SetInt("_BufferWidth", smokeTex.width);
+        raymarchCompute.SetInt("_BufferHeight", smokeTex.height);
         raymarchCompute.SetInt("_StepCount", stepCount);
         raymarchCompute.SetInt("_LightStepCount", lightStepCount);
         raymarchCompute.SetFloat("_SmokeSize", smokeSize);
@@ -325,9 +325,6 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetVector("_ExtinctionColor", extinctionColor);
         raymarchCompute.SetVector("_AmbientColor", ambientColor);
 
-        RenderTexture smokeTex = GetSmokeAlbedoTex();
-        RenderTexture smokeMaskTex = GetSmokeMaskTex();
-
         if (debugNoise) {
             raymarchCompute.SetTexture(debugNoisePass, "_NoiseTex", noiseTex);
             raymarchCompute.SetTexture(debugNoisePass, "_SmokeTex", smokeTex);
@@ -347,14 +344,36 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetTexture(raymarchSmokePass, "_SmokeMaskTex", smokeMaskTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_NoiseTex", noiseTex);
         raymarchCompute.SetTexture(raymarchSmokePass, "_DepthTex", depthTex);
-        raymarchCompute.Dispatch(raymarchSmokePass, Mathf.CeilToInt(bufferWidth / 8.0f), Mathf.CeilToInt(bufferHeight / 8.0f), 1);
+        raymarchCompute.Dispatch(raymarchSmokePass, Mathf.CeilToInt(smokeTex.width / 8.0f), Mathf.CeilToInt(smokeTex.height / 8.0f), 1);
+        
+        if (resolutionScale == Res.HalfResolution) {
+            Graphics.Blit(smokeMaskHalfTex, smokeMaskFullTex);
+
+            if (bicubicUpscale)
+                Graphics.Blit(smokeAlbedoHalfTex, smokeAlbedoFullTex, compositeMaterial, 1);
+            else
+                Graphics.Blit(smokeAlbedoHalfTex, smokeAlbedoFullTex);
+        }
+
+        if (resolutionScale == Res.QuarterResolution) {
+            Graphics.Blit(smokeMaskQuarterTex, smokeMaskHalfTex);
+            Graphics.Blit(smokeMaskHalfTex, smokeMaskFullTex);
+
+            if (bicubicUpscale) {
+                Graphics.Blit(smokeAlbedoQuarterTex, smokeAlbedoHalfTex, compositeMaterial, 1);
+                Graphics.Blit(smokeAlbedoHalfTex, smokeAlbedoFullTex, compositeMaterial, 1);
+            } else {
+                Graphics.Blit(smokeAlbedoQuarterTex, smokeAlbedoHalfTex);
+                Graphics.Blit(smokeAlbedoHalfTex, smokeAlbedoFullTex);
+            }
+        }
 
         // Composite volumes with source buffer
-        compositeMaterial.SetTexture("_SmokeTex", smokeTex);
-        compositeMaterial.SetTexture("_SmokeMaskTex", smokeMaskTex);
+        compositeMaterial.SetTexture("_SmokeTex", smokeAlbedoFullTex);
+        compositeMaterial.SetTexture("_SmokeMaskTex", smokeMaskFullTex);
         compositeMaterial.SetTexture("_DepthTex", depthTex);
         compositeMaterial.SetFloat("_DebugView", (int)debugView);
 
-        Graphics.Blit(source, destination, compositeMaterial, 1);
+        Graphics.Blit(source, destination, compositeMaterial, 2);
     }
 }

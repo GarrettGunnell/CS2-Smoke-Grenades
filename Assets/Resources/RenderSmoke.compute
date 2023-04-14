@@ -347,6 +347,6 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         }
     }
 
-    _SmokeTex[id.xy] = float4(saturate(col) * (1 - alpha), 1.0f);
+    _SmokeTex[id.xy] = float4(saturate(col), 1.0f);
     _SmokeMaskTex[id.xy] = saturate(alpha);
 }
