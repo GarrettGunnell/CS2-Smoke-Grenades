@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class VolumeNoiseGenerator : MonoBehaviour
+public class Voxelizer : MonoBehaviour
 {
     // Start is called before the first frame update
     void Start()
