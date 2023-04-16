@@ -101,19 +101,30 @@ Shader "Hidden/CompositeEffects" {
             sampler2D _SmokeTex, _SmokeMaskTex;
             Texture2D _DepthTex;
             int _DebugView;
-
+            float _Sharpness;
 
             float4 fp(v2f i) : SV_Target {
                 float4 col = tex2D(_MainTex, i.uv);
                 float4 smokeAlbedo = tex2D(_SmokeTex, i.uv);
                 float smokeMask = saturate(tex2D(_SmokeMaskTex, i.uv).r);
 
+                //Apply Sharpness
+                float neighbor = _Sharpness * -1;
+                float center = _Sharpness * 4 + 1;
+
+                float4 n = tex2D(_SmokeTex, i.uv + _MainTex_TexelSize.xy * float2(0, 1));
+                float4 e = tex2D(_SmokeTex, i.uv + _MainTex_TexelSize.xy * float2(1, 0));
+                float4 s = tex2D(_SmokeTex, i.uv + _MainTex_TexelSize.xy * float2(0, -1));
+                float4 w = tex2D(_SmokeTex, i.uv + _MainTex_TexelSize.xy * float2(-1, 0));
+
+                float4 sharpenedSmoke = n * neighbor + e * neighbor + smokeAlbedo * center + s * neighbor + w * neighbor;
+
                 switch (_DebugView) {
                     case 0:
                         //return col + smokeAlbedo;
-                        return lerp(col, smokeAlbedo, 1 - smokeMask);
+                        return lerp(col, saturate(sharpenedSmoke), 1 - smokeMask);
                     case 1:
-                        return smokeAlbedo;
+                        return saturate(sharpenedSmoke);
                     case 2:
                         return smokeMask;
                     case 3:
