@@ -52,7 +52,7 @@ Shader "Hidden/VisualizeVoxels" {
                 float ndotl = DotClamped(_WorldSpaceLightPos0.xyz, i.normal) * 0.5f + 0.5f;
                 ndotl *= ndotl;
 
-				return ndotl;
+				return float4(i.hashCol * ndotl, 1.0f);
 			}
 
 			ENDCG

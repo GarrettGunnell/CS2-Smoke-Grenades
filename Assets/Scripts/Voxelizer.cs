@@ -11,8 +11,10 @@ public class Voxelizer : MonoBehaviour {
 
     public bool debugVoxels = true;
 
-    [Range(0, 10)]
-    public float maxRadius = 1.0f;
+    public Vector3 maxRadius = new Vector3(1, 1, 1);
+
+    [Range(0.01f, 5.0f)]
+    public float growthSpeed = 1.0f;
 
     public bool restartAnimation = false;
 
@@ -67,31 +69,29 @@ public class Voxelizer : MonoBehaviour {
     }
 
     float Easing(float x) {
-        return Mathf.Sin((radius * Mathf.PI) / 2);
+        return 1 - 1 / (5 * x + 1);
+        //return Mathf.Sin((radius * Mathf.PI) / 2);
     }
 
     void Update() {
-        if (radius < 1.0f) {
-            radius += 2 * Time.deltaTime;
-        }
+        radius += growthSpeed * Time.deltaTime;
 
         if (restartAnimation) {
-            radius = 0.0f;
+            radius = 0;
             restartAnimation = false;
         }
+
+        voxelizeCompute.SetBuffer(0, "_Voxels", voxelsBuffer);
+        voxelizeCompute.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
+        voxelizeCompute.SetVector("_BoundsExtent", boundsExtent);
+        voxelizeCompute.SetVector("_Radius", Vector3.Lerp(Vector3.zero, maxRadius, Easing(radius)));
+        voxelizeCompute.Dispatch(0, Mathf.CeilToInt((voxelsX * voxelsY * voxelsZ) / 128.0f), 1, 1);
 
         if (debugVoxels) {
             debugVoxelMaterial.SetBuffer("_Voxels", voxelsBuffer);
             debugVoxelMaterial.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
             debugVoxelMaterial.SetVector("_BoundsExtent", boundsExtent);
             debugVoxelMaterial.SetFloat("_VoxelSize", voxelSize);
-
-            
-            voxelizeCompute.SetBuffer(0, "_Voxels", voxelsBuffer);
-            voxelizeCompute.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
-            voxelizeCompute.SetVector("_BoundsExtent", boundsExtent);
-            voxelizeCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
-            voxelizeCompute.Dispatch(0, Mathf.CeilToInt((voxelsX * voxelsY * voxelsZ) / 128.0f), 1, 1);
 
             Graphics.DrawMeshInstancedIndirect(debugMesh, 0, debugVoxelMaterial, debugBounds, argsBuffer);
         }
