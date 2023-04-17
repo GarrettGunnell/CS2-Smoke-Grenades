@@ -1,0 +1,21 @@
+#pragma kernel CSVoxelize
+
+RWStructuredBuffer<int> _Voxels;
+float3 _VoxelResolution, _BoundsExtent;
+float _Radius;
+
+[numthreads(128,1,1)]
+void CSVoxelize(uint id : SV_DispatchThreadID) {
+    uint x = id.x % (_VoxelResolution.x);
+    uint y = (id.x / _VoxelResolution.x) % _VoxelResolution.y;
+    uint z = id.x / (_VoxelResolution.x * _VoxelResolution.y);
+
+    float3 pos = float3(x, y, z) / _VoxelResolution;
+    pos.y = 1 - pos.y;
+    pos = pos * 2 - 1;
+    pos *= _BoundsExtent;
+    pos.y -= _BoundsExtent.y;
+
+
+    _Voxels[id.x] = dot(pos, pos) < _Radius * _Radius ? 1 : 0;
+}
