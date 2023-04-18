@@ -3,6 +3,8 @@
 RWStructuredBuffer<int> _Voxels;
 float3 _VoxelResolution, _BoundsExtent;
 float3 _Radius;
+float3 _SmokeOrigin;
+
 
 [numthreads(128,1,1)]
 void CSVoxelize(uint id : SV_DispatchThreadID) {
@@ -15,11 +17,13 @@ void CSVoxelize(uint id : SV_DispatchThreadID) {
     pos = pos * 2 - 1;
     pos *= _BoundsExtent;
     pos.y -= _BoundsExtent.y;
+    pos.xz -= _SmokeOrigin.xz;
+    pos.y += _SmokeOrigin.y;
 
     float ellipsoid = (pos.x / _Radius.x) * (pos.x / _Radius.x) + 
                       (pos.y / _Radius.y) * (pos.y / _Radius.y) + 
                       (pos.z / _Radius.z) * (pos.z / _Radius.z);
 
 
-    _Voxels[id.x] = ellipsoid < 1 ? 1 : 0;
+    _Voxels[id.x] = ellipsoid <= 1 ? 1 : 0;
 }

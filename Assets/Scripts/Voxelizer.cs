@@ -51,6 +51,7 @@ public class Voxelizer : MonoBehaviour {
         voxelizeCompute.SetBuffer(0, "_Voxels", voxelsBuffer);
         voxelizeCompute.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
         voxelizeCompute.SetVector("_BoundsExtent", boundsExtent);
+        voxelizeCompute.SetVector("_SmokeOrigin", new Vector3(0, 0, 0));
         voxelizeCompute.SetFloat("_Radius", radius);
 
         voxelizeCompute.Dispatch(0, Mathf.CeilToInt((voxelsX * voxelsY * voxelsZ) / 128.0f), 1, 1);
@@ -69,11 +70,22 @@ public class Voxelizer : MonoBehaviour {
     }
 
     float Easing(float x) {
-        return 1 - 1 / (5 * x + 1);
+        return 1 - 1 / (2 * x * x * x + 1);
         //return Mathf.Sin((radius * Mathf.PI) / 2);
     }
 
     void Update() {
+        if (Input.GetMouseButtonDown(0)) {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit, 50)) {
+                voxelizeCompute.SetVector("_SmokeOrigin", hit.point);
+                radius = 0;
+            }
+        }
+
+
+
         radius += growthSpeed * Time.deltaTime;
 
         if (restartAnimation) {
