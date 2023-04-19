@@ -1,5 +1,6 @@
+#pragma kernel CS_Clear
 #pragma kernel CS_VoxelizeMesh
-#pragma kernel CSVoxelize
+#pragma kernel CS_Voxelize
 
 RWStructuredBuffer<int> _Voxels;
 RWStructuredBuffer<int> _StaticVoxels;
@@ -86,6 +87,11 @@ bool IntersectsTriangleAabb(Triangle tri, AABB aabb) {
 
 
 [numthreads(128,1,1)]
+void CS_Clear(uint id : SV_DISPATCHTHREADID) {
+    _Voxels[id.x] = 0;
+}
+
+[numthreads(128,1,1)]
 void CS_VoxelizeMesh(uint id : SV_DISPATCHTHREADID) {
     [branch]
     if (0 <= id.x && id.x < _VoxelCount) {
@@ -117,13 +123,11 @@ void CS_VoxelizeMesh(uint id : SV_DISPATCHTHREADID) {
                 return;
             }
         }
-
-        _StaticVoxels[id.x] = 0;
     }
 }
 
 [numthreads(128,1,1)]
-void CSVoxelize(uint id : SV_DispatchThreadID) {
+void CS_Voxelize(uint id : SV_DISPATCHTHREADID) {
     [branch]
     if (0 <= id.x && id.x < _VoxelCount) {
         uint3 voxelRes = uint3(_VoxelResolution);
