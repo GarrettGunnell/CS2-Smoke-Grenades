@@ -1,29 +1,141 @@
+#pragma kernel CS_VoxelizeMesh
 #pragma kernel CSVoxelize
 
 RWStructuredBuffer<int> _Voxels;
+RWStructuredBuffer<int> _StaticVoxels;
+
+StructuredBuffer<float3> _MeshVertices;
+StructuredBuffer<int> _MeshTriangleIndices;
+float4x4 _MeshLocalToWorld;
+
+
 float3 _VoxelResolution, _BoundsExtent;
 float3 _Radius;
 float3 _SmokeOrigin;
+uint _VoxelCount, _TriangleCount;
+float _VoxelSize, _IntersectionBias;
+
+// Intersection functions from https://bronsonzgeb.com/index.php/2021/05/29/gpu-mesh-voxelizer-part-2/
+struct Triangle {
+    float3 a, b, c;
+};
+
+struct AABB {
+    float3 center;
+    float3 extents;
+};
+
+bool IntersectsTriangleAabbSat(float3 v0, float3 v1, float3 v2, float3 aabbExtents, float3 axis) {
+    float p0 = dot(v0, axis);
+    float p1 = dot(v1, axis);
+    float p2 = dot(v2, axis);
+
+    float r = aabbExtents.x * abs(dot(float3(1, 0, 0), axis)) +
+              aabbExtents.y * abs(dot(float3(0, 1, 0), axis)) +
+              aabbExtents.z * abs(dot(float3(0, 0, 1), axis));
+
+    float maxP = max(p0, max(p1, p2));
+    float minP = min(p0, min(p1, p2));
+
+    return !(max(-maxP, minP) > r);
+}
+
+bool IntersectsTriangleAabb(Triangle tri, AABB aabb) {
+    tri.a -= aabb.center;
+    tri.b -= aabb.center;
+    tri.c -= aabb.center;
+
+    float3 ab = normalize(tri.b - tri.a);
+    float3 bc = normalize(tri.c - tri.b);
+    float3 ca = normalize(tri.a - tri.c);
+
+    //Cross ab, bc, and ca with (1, 0, 0)
+    float3 a00 = float3(0.0, -ab.z, ab.y);
+    float3 a01 = float3(0.0, -bc.z, bc.y);
+    float3 a02 = float3(0.0, -ca.z, ca.y);
+
+    //Cross ab, bc, and ca with (0, 1, 0)
+    float3 a10 = float3(ab.z, 0.0, -ab.x);
+    float3 a11 = float3(bc.z, 0.0, -bc.x);
+    float3 a12 = float3(ca.z, 0.0, -ca.x);
+
+    //Cross ab, bc, and ca with (0, 0, 1)
+    float3 a20 = float3(-ab.y, ab.x, 0.0);
+    float3 a21 = float3(-bc.y, bc.x, 0.0);
+    float3 a22 = float3(-ca.y, ca.x, 0.0);
+
+    if (
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, a00) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, a01) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, a02) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, a10) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, a11) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, a12) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, a20) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, a21) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, a22) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, float3(1, 0, 0)) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, float3(0, 1, 0)) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, float3(0, 0, 1)) ||
+        !IntersectsTriangleAabbSat(tri.a, tri.b, tri.c, aabb.extents, cross(ab, bc))
+    )
+        return false;
+
+    return true;
+}
 
 
 [numthreads(128,1,1)]
+void CS_VoxelizeMesh(uint id : SV_DISPATCHTHREADID) {
+    [branch]
+    if (0 <= id.x && id.x < _VoxelCount) {
+        uint3 voxelRes = uint3(_VoxelResolution);
+        uint x = id.x % (voxelRes.x);
+        uint y = (id.x / voxelRes.x) % voxelRes.y;
+        uint z = id.x / (voxelRes.x * voxelRes.y);
+
+        float3 pos = float3(x, y, z);
+        float halfVoxelSize = _VoxelSize * 0.5f;
+
+        float3 centerPos = pos * _VoxelSize + halfVoxelSize;
+        centerPos.xz -= _BoundsExtent.xz;
+
+        AABB aabb;
+        aabb.center = centerPos;
+        aabb.extents = halfVoxelSize * _IntersectionBias;
+
+        for (uint i = 0; i < _TriangleCount; i += 3) {
+            Triangle tri;
+            
+            tri.a = mul(_MeshLocalToWorld, float4(_MeshVertices[_MeshTriangleIndices[i]], 1.0f)).xyz;
+            tri.b = mul(_MeshLocalToWorld, float4(_MeshVertices[_MeshTriangleIndices[i + 1]], 1.0f)).xyz;
+            tri.c = mul(_MeshLocalToWorld, float4(_MeshVertices[_MeshTriangleIndices[i + 2]], 1.0f)).xyz;
+
+            [branch]
+            if (IntersectsTriangleAabb(tri, aabb)) {
+                _StaticVoxels[id.x] = 1;
+                return;
+            }
+        }
+
+        _StaticVoxels[id.x] = 0;
+    }
+}
+
+[numthreads(128,1,1)]
 void CSVoxelize(uint id : SV_DispatchThreadID) {
-    uint x = id.x % (_VoxelResolution.x);
-    uint y = (id.x / _VoxelResolution.x) % _VoxelResolution.y;
-    uint z = id.x / (_VoxelResolution.x * _VoxelResolution.y);
+    [branch]
+    if (0 <= id.x && id.x < _VoxelCount) {
+        uint3 voxelRes = uint3(_VoxelResolution);
+        uint x = id.x % (voxelRes.x);
+        uint y = (id.x / voxelRes.x) % voxelRes.y;
+        uint z = id.x / (voxelRes.x * voxelRes.y);
+        
+        float3 pos = float3(x, y, z);
+        float halfVoxelSize = _VoxelSize * 0.5f;
 
-    float3 pos = float3(x, y, z) / _VoxelResolution;
-    pos.y = 1 - pos.y;
-    pos = pos * 2 - 1;
-    pos *= _BoundsExtent;
-    pos.y -= _BoundsExtent.y;
-    pos.xz -= _SmokeOrigin.xz;
-    pos.y += _SmokeOrigin.y;
+        float3 centerPos = pos * _VoxelSize + halfVoxelSize - float3(_BoundsExtent.x, 0, _BoundsExtent.z) - _SmokeOrigin;
 
-    float ellipsoid = (pos.x / _Radius.x) * (pos.x / _Radius.x) + 
-                      (pos.y / _Radius.y) * (pos.y / _Radius.y) + 
-                      (pos.z / _Radius.z) * (pos.z / _Radius.z);
-
-
-    _Voxels[id.x] = ellipsoid <= 1 ? 1 : 0;
+        _Voxels[id.x] = length(centerPos / _Radius) <= 1 ? 1 : 0;
+    }
 }

@@ -2,6 +2,8 @@ Shader "Hidden/VisualizeVoxels" {
 	SubShader {
 
 		Pass {
+            Blend SrcAlpha OneMinusSrcAlpha
+
 			CGPROGRAM
 
 			#pragma vertex vp
@@ -11,7 +13,8 @@ Shader "Hidden/VisualizeVoxels" {
             #include "AutoLight.cginc"
 
             StructuredBuffer<int> _Voxels;
-            float3 _VoxelResolution, _BoundsExtent;
+            float3 _BoundsExtent;
+            uint3 _VoxelResolution;
             float _VoxelSize;
 
 			struct VertexData {
@@ -34,7 +37,7 @@ Shader "Hidden/VisualizeVoxels" {
 
 			v2f vp(VertexData v, uint instanceID : SV_INSTANCEID) {
 				v2f i;
-
+                
                 uint x = instanceID % (_VoxelResolution.x);
                 uint y = (instanceID / _VoxelResolution.x) % _VoxelResolution.y;
                 uint z = instanceID / (_VoxelResolution.x * _VoxelResolution.y);

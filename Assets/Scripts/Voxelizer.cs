@@ -7,27 +7,26 @@ public class Voxelizer : MonoBehaviour {
 
     public float voxelSize = 0.25f;
 
+    public GameObject objectsToVoxelize = null;
+
+    [Range(0.0f, 2.0f)]
+    public float intersectionBias = 1.0f;
+
     public Mesh debugMesh;
 
-    public bool debugVoxels = true;
+    public bool debugStaticVoxels = false;
+    public bool debugSmokeVoxels = false;
 
     public Vector3 maxRadius = new Vector3(1, 1, 1);
 
     [Range(0.01f, 5.0f)]
     public float growthSpeed = 1.0f;
 
-    public bool restartAnimation = false;
-
-    private ComputeBuffer voxelsBuffer, argsBuffer;
-
+    private ComputeBuffer staticVoxelsBuffer, smokeVoxelsBuffer, argsBuffer;
     private ComputeShader voxelizeCompute;
-
     private Material debugVoxelMaterial;
-
     private Bounds debugBounds;
-
-    private int voxelsX, voxelsY, voxelsZ;
-
+    private int voxelsX, voxelsY, voxelsZ, totalVoxels;
     private float radius;
 
     void OnEnable() {
@@ -41,29 +40,48 @@ public class Voxelizer : MonoBehaviour {
         voxelsX = Mathf.CeilToInt(boundsSize.x / voxelSize);
         voxelsY = Mathf.CeilToInt(boundsSize.y / voxelSize);
         voxelsZ = Mathf.CeilToInt(boundsSize.z / voxelSize);
-        
-        // Debug.LogFormat("Voxels X: {0}", voxelsX);
-        // Debug.LogFormat("Voxels Y: {0}", voxelsY);
-        // Debug.LogFormat("Voxels Z: {0}", voxelsZ);
-        // Debug.LogFormat("Total Voxels: {0}", voxelsX * voxelsY * voxelsZ);
+        totalVoxels = voxelsX * voxelsY * voxelsZ;
 
-        voxelsBuffer = new ComputeBuffer((voxelsX * voxelsY * voxelsZ), 4);
-        voxelizeCompute.SetBuffer(0, "_Voxels", voxelsBuffer);
+        staticVoxelsBuffer = new ComputeBuffer(totalVoxels, 4);
+
+        Mesh sharedMesh = objectsToVoxelize.GetComponent<MeshFilter>().sharedMesh;
+
+        ComputeBuffer verticesBuffer = new ComputeBuffer(sharedMesh.vertexCount, 3 * sizeof(float));
+        verticesBuffer.SetData(sharedMesh.vertices);
+        ComputeBuffer trianglesBuffer = new ComputeBuffer(sharedMesh.triangles.Length, sizeof(int));
+        trianglesBuffer.SetData(sharedMesh.triangles);
+
+        voxelizeCompute.SetBuffer(0, "_StaticVoxels", staticVoxelsBuffer);
+        voxelizeCompute.SetBuffer(0, "_MeshVertices", verticesBuffer);
+        voxelizeCompute.SetBuffer(0, "_MeshTriangleIndices", trianglesBuffer);
+        voxelizeCompute.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
+        voxelizeCompute.SetVector("_BoundsExtent", boundsExtent);
+        voxelizeCompute.SetMatrix("_MeshLocalToWorld", objectsToVoxelize.transform.localToWorldMatrix);
+        voxelizeCompute.SetInt("_VoxelCount", totalVoxels);
+        voxelizeCompute.SetInt("_TriangleCount", sharedMesh.triangles.Length);
+        voxelizeCompute.SetFloat("_VoxelSize", voxelSize);
+        voxelizeCompute.SetFloat("_IntersectionBias", intersectionBias);
+        
+        voxelizeCompute.Dispatch(0, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
+
+        verticesBuffer.Release();
+        trianglesBuffer.Release();
+
+        smokeVoxelsBuffer = new ComputeBuffer(totalVoxels, 4);
+        voxelizeCompute.SetBuffer(1, "_Voxels", smokeVoxelsBuffer);
         voxelizeCompute.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
         voxelizeCompute.SetVector("_BoundsExtent", boundsExtent);
         voxelizeCompute.SetVector("_SmokeOrigin", new Vector3(0, 0, 0));
         voxelizeCompute.SetFloat("_Radius", radius);
+        voxelizeCompute.SetInt("_VoxelCount", totalVoxels);
 
-        voxelizeCompute.Dispatch(0, Mathf.CeilToInt((voxelsX * voxelsY * voxelsZ) / 128.0f), 1, 1);
+        voxelizeCompute.Dispatch(1, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
 
-
-        
+        // Debug instancing args
         argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
         uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
-        // Arguments for drawing mesh.
-        // 0 == number of triangle indices, 1 == population, others are only relevant if drawing submeshes.
         args[0] = (uint)debugMesh.GetIndexCount(0);
-        args[1] = (uint)(voxelsX * voxelsY * voxelsZ);
+        args[1] = (uint)totalVoxels;
         args[2] = (uint)debugMesh.GetIndexStart(0);
         args[3] = (uint)debugMesh.GetBaseVertex(0);
         argsBuffer.SetData(args);
@@ -71,7 +89,6 @@ public class Voxelizer : MonoBehaviour {
 
     float Easing(float x) {
         return 1 - 1 / (2 * x * x * x + 1);
-        //return Mathf.Sin((radius * Mathf.PI) / 2);
     }
 
     void Update() {
@@ -88,19 +105,24 @@ public class Voxelizer : MonoBehaviour {
 
         radius += growthSpeed * Time.deltaTime;
 
-        if (restartAnimation) {
-            radius = 0;
-            restartAnimation = false;
-        }
-
-        voxelizeCompute.SetBuffer(0, "_Voxels", voxelsBuffer);
+        voxelizeCompute.SetBuffer(1, "_Voxels", smokeVoxelsBuffer);
         voxelizeCompute.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
         voxelizeCompute.SetVector("_BoundsExtent", boundsExtent);
         voxelizeCompute.SetVector("_Radius", Vector3.Lerp(Vector3.zero, maxRadius, Easing(radius)));
-        voxelizeCompute.Dispatch(0, Mathf.CeilToInt((voxelsX * voxelsY * voxelsZ) / 128.0f), 1, 1);
+        voxelizeCompute.SetInt("_VoxelCount", totalVoxels);
+        voxelizeCompute.Dispatch(1, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
 
-        if (debugVoxels) {
-            debugVoxelMaterial.SetBuffer("_Voxels", voxelsBuffer);
+        if (debugStaticVoxels) {
+            debugVoxelMaterial.SetBuffer("_Voxels", staticVoxelsBuffer);
+            debugVoxelMaterial.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
+            debugVoxelMaterial.SetVector("_BoundsExtent", boundsExtent);
+            debugVoxelMaterial.SetFloat("_VoxelSize", voxelSize);
+
+            Graphics.DrawMeshInstancedIndirect(debugMesh, 0, debugVoxelMaterial, debugBounds, argsBuffer);
+        }
+
+        if (debugSmokeVoxels) {
+            debugVoxelMaterial.SetBuffer("_Voxels", smokeVoxelsBuffer);
             debugVoxelMaterial.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
             debugVoxelMaterial.SetVector("_BoundsExtent", boundsExtent);
             debugVoxelMaterial.SetFloat("_VoxelSize", voxelSize);
@@ -110,7 +132,8 @@ public class Voxelizer : MonoBehaviour {
     }
 
     void OnDisable() {
-        voxelsBuffer.Release();
+        staticVoxelsBuffer.Release();
+        smokeVoxelsBuffer.Release();
         argsBuffer.Release();
     }
 
