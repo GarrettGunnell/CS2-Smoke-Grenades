@@ -146,7 +146,7 @@ void CS_Seed(uint id : SV_DISPATCHTHREADID) {
     seedPos *= _VoxelResolution;
     seedPos = round(seedPos);
 
-    _SmokeVoxels[to1D(seedPos)] = 1;
+    _SmokeVoxels[to1D(seedPos)] = 16;
 }
 
 [numthreads(128, 1, 1)]
@@ -180,15 +180,10 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
             _PingVoxels[id.x] = 0;
             return;
         }
-
-        int up = 0;
-        if (voxelPos.y + 1 < _VoxelResolution.y)
-            up = _SmokeVoxels[to1D(voxelPos + int3(0, 1, 0))];
         
         int down = 0;
         if (voxelPos.y - 1 >= 0)
             down = _SmokeVoxels[to1D(voxelPos + int3(0, -1, 0))];
-
             
         int left = 0;
         if (voxelPos.x + 1 < _VoxelResolution.x)
@@ -206,7 +201,7 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
         if (voxelPos.z - 1 >= 0)
             forward = _SmokeVoxels[to1D(voxelPos + int3(0, 0, -1))];
 
-        _PingVoxels[id.x] = max(up, max(down, max(left, max(right, max(forward, backward)))));
+        _PingVoxels[id.x] = max(down, max(left, max(right, max(forward, backward)))) - 1;
     }
 }
 

@@ -44,7 +44,7 @@ Shader "Hidden/VisualizeVoxels" {
 
 
 				i.pos = UnityObjectToClipPos((v.vertex + float3(x, y, z)) * _VoxelSize + (_VoxelSize * 0.5f) - _BoundsExtent);
-                i.pos *= _Voxels[instanceID];
+                i.pos *= _Voxels[instanceID] > 0;
 				i.normal = UnityObjectToWorldNormal(v.normal);
                 i.hashCol = float3(hash(instanceID), hash(instanceID * 2), hash(instanceID * 3));
 

@@ -107,6 +107,9 @@ public class Voxelizer : MonoBehaviour {
                 voxelizeCompute.SetVector("_SmokeOrigin", hit.point);
                 
                 radius = 0;
+                voxelizeCompute.SetBuffer(0, "_Voxels", smokeVoxelsBuffer);
+                voxelizeCompute.Dispatch(0, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
+
                 voxelizeCompute.Dispatch(2, 1, 1, 1);
             }
         }
