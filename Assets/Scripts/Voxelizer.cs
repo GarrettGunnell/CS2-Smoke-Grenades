@@ -22,6 +22,9 @@ public class Voxelizer : MonoBehaviour {
     [Range(0.01f, 5.0f)]
     public float growthSpeed = 1.0f;
 
+    [Range(0, 128)]
+    public int maxFillSteps = 16;
+
     public bool iterateFill = false;
     public bool constantFill = false;
 
@@ -100,6 +103,7 @@ public class Voxelizer : MonoBehaviour {
     }
 
     void Update() {
+        voxelizeCompute.SetInt("_MaxFillSteps", maxFillSteps);
         if (Input.GetMouseButtonDown(0)) {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
@@ -144,6 +148,7 @@ public class Voxelizer : MonoBehaviour {
             debugVoxelMaterial.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
             debugVoxelMaterial.SetVector("_BoundsExtent", boundsExtent);
             debugVoxelMaterial.SetFloat("_VoxelSize", voxelSize);
+            debugVoxelMaterial.SetInt("_MaxFillSteps", maxFillSteps);
 
             Graphics.DrawMeshInstancedIndirect(debugMesh, 0, debugVoxelMaterial, debugBounds, argsBuffer);
         }
@@ -153,6 +158,7 @@ public class Voxelizer : MonoBehaviour {
             debugVoxelMaterial.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
             debugVoxelMaterial.SetVector("_BoundsExtent", boundsExtent);
             debugVoxelMaterial.SetFloat("_VoxelSize", voxelSize);
+            debugVoxelMaterial.SetInt("_MaxFillSteps", maxFillSteps);
 
             Graphics.DrawMeshInstancedIndirect(debugMesh, 0, debugVoxelMaterial, debugBounds, argsBuffer);
         }

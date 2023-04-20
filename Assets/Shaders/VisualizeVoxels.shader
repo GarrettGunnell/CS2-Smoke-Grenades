@@ -16,6 +16,7 @@ Shader "Hidden/VisualizeVoxels" {
             float3 _BoundsExtent;
             uint3 _VoxelResolution;
             float _VoxelSize;
+            int _MaxFillSteps;
 
 			struct VertexData {
 				float4 vertex : POSITION;
@@ -26,6 +27,7 @@ Shader "Hidden/VisualizeVoxels" {
 				float4 pos : SV_POSITION;
                 float3 hashCol : TEXCOORD0;
 				float3 normal : TEXCOORD1;
+                int steps : TEXCOORD2;
 			};
 
             float hash(uint n) {
@@ -45,6 +47,7 @@ Shader "Hidden/VisualizeVoxels" {
 
 				i.pos = UnityObjectToClipPos((v.vertex + float3(x, y, z)) * _VoxelSize + (_VoxelSize * 0.5f) - _BoundsExtent);
                 i.pos *= _Voxels[instanceID] > 0;
+                i.steps = _Voxels[instanceID];
 				i.normal = UnityObjectToWorldNormal(v.normal);
                 i.hashCol = float3(hash(instanceID), hash(instanceID * 2), hash(instanceID * 3));
 
@@ -55,7 +58,9 @@ Shader "Hidden/VisualizeVoxels" {
                 float ndotl = DotClamped(_WorldSpaceLightPos0.xyz, i.normal) * 0.5f + 0.5f;
                 ndotl *= ndotl;
 
-				return float4(i.hashCol * ndotl, 1.0f);
+                float3 c = (float)i.steps / (float)_MaxFillSteps * ndotl;
+
+				return float4(c.rgb, 1.0f);
 			}
 
 			ENDCG
