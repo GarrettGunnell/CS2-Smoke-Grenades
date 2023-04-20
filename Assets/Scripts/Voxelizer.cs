@@ -78,14 +78,9 @@ public class Voxelizer : MonoBehaviour {
         }
 
         smokeVoxelsBuffer = new ComputeBuffer(totalVoxels, 4);
+        voxelizeCompute.SetBuffer(0, "_Voxels", smokeVoxelsBuffer);
         voxelizeCompute.SetBuffer(2, "_Voxels", smokeVoxelsBuffer);
-        voxelizeCompute.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
-        voxelizeCompute.SetVector("_BoundsExtent", boundsExtent);
-        voxelizeCompute.SetVector("_SmokeOrigin", new Vector3(0, 0, 0));
-        voxelizeCompute.SetFloat("_Radius", radius);
-        voxelizeCompute.SetInt("_VoxelCount", totalVoxels);
-
-        voxelizeCompute.Dispatch(2, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
+        voxelizeCompute.Dispatch(0, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
 
         // Debug instancing args
         argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
@@ -106,22 +101,26 @@ public class Voxelizer : MonoBehaviour {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
             if (Physics.Raycast(ray, out hit, 50)) {
+                voxelizeCompute.SetVector("_BoundsExtent", boundsExtent);
+                voxelizeCompute.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
                 voxelizeCompute.SetVector("_SmokeOrigin", hit.point);
+                
                 radius = 0;
+                voxelizeCompute.Dispatch(2, 1, 1, 1);
             }
         }
 
 
 
         radius += growthSpeed * Time.deltaTime;
-
+        /*
         voxelizeCompute.SetBuffer(2, "_Voxels", smokeVoxelsBuffer);
         voxelizeCompute.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
         voxelizeCompute.SetVector("_BoundsExtent", boundsExtent);
         voxelizeCompute.SetVector("_Radius", Vector3.Lerp(Vector3.zero, maxRadius, Easing(radius)));
         voxelizeCompute.SetInt("_VoxelCount", totalVoxels);
-        voxelizeCompute.Dispatch(2, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
-
+        voxelizeCompute.Dispatch(2, 1, 1, 1);
+        */
         if (debugStaticVoxels) {
             debugVoxelMaterial.SetBuffer("_Voxels", staticVoxelsBuffer);
             debugVoxelMaterial.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));

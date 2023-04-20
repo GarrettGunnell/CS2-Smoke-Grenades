@@ -1,5 +1,6 @@
 #pragma kernel CS_Clear
 #pragma kernel CS_VoxelizeMesh
+#pragma kernel CS_Seed
 #pragma kernel CS_Voxelize
 
 RWStructuredBuffer<int> _Voxels;
@@ -9,12 +10,17 @@ StructuredBuffer<float3> _MeshVertices;
 StructuredBuffer<int> _MeshTriangleIndices;
 float4x4 _MeshLocalToWorld;
 
-
 float3 _VoxelResolution, _BoundsExtent;
 float3 _Radius;
 float3 _SmokeOrigin;
 uint _VoxelCount, _TriangleCount;
 float _VoxelSize, _IntersectionBias;
+
+
+uint to1D(uint3 pos) {
+    return pos.x + pos.y * _VoxelResolution.x + pos.z * _VoxelResolution.x * _VoxelResolution.y;
+}
+
 
 // Intersection functions from https://bronsonzgeb.com/index.php/2021/05/29/gpu-mesh-voxelizer-part-2/
 struct Triangle {
@@ -142,4 +148,17 @@ void CS_Voxelize(uint id : SV_DISPATCHTHREADID) {
 
         _Voxels[id.x] = length(centerPos / _Radius) <= 1 ? 1 : 0;
     }
+}
+
+[numthreads(1,1,1)]
+void CS_Seed(uint id : SV_DISPATCHTHREADID) {
+    float3 seedPos = _SmokeOrigin % _BoundsExtent;
+    seedPos.xz += _BoundsExtent.xz;
+    seedPos /= _BoundsExtent * 2;
+    seedPos *= _VoxelResolution;
+    seedPos = round(seedPos);
+
+
+
+    _Voxels[to1D(seedPos)] = 1;
 }
