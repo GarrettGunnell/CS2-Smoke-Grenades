@@ -1,10 +1,13 @@
 #pragma kernel CS_Clear
 #pragma kernel CS_VoxelizeMesh
 #pragma kernel CS_Seed
-#pragma kernel CS_Voxelize
+#pragma kernel CS_FillStep
+#pragma kernel CS_PingPong
 
 RWStructuredBuffer<int> _Voxels;
+RWStructuredBuffer<int> _SmokeVoxels;
 RWStructuredBuffer<int> _StaticVoxels;
+RWStructuredBuffer<int> _PingVoxels;
 
 StructuredBuffer<float3> _MeshVertices;
 StructuredBuffer<int> _MeshTriangleIndices;
@@ -21,6 +24,14 @@ uint to1D(uint3 pos) {
     return pos.x + pos.y * _VoxelResolution.x + pos.z * _VoxelResolution.x * _VoxelResolution.y;
 }
 
+uint3 to3D(uint idx) {
+    uint3 voxelRes = uint3(_VoxelResolution);
+    uint x = idx % (voxelRes.x);
+    uint y = (idx / voxelRes.x) % voxelRes.y;
+    uint z = idx / (voxelRes.x * voxelRes.y);
+
+    return uint3(x, y, z);
+}
 
 // Intersection functions from https://bronsonzgeb.com/index.php/2021/05/29/gpu-mesh-voxelizer-part-2/
 struct Triangle {
@@ -101,12 +112,7 @@ void CS_Clear(uint id : SV_DISPATCHTHREADID) {
 void CS_VoxelizeMesh(uint id : SV_DISPATCHTHREADID) {
     [branch]
     if (0 <= id.x && id.x < _VoxelCount) {
-        uint3 voxelRes = uint3(_VoxelResolution);
-        uint x = id.x % (voxelRes.x);
-        uint y = (id.x / voxelRes.x) % voxelRes.y;
-        uint z = id.x / (voxelRes.x * voxelRes.y);
-
-        float3 pos = float3(x, y, z);
+        float3 pos = to3D(id.x);
         float halfVoxelSize = _VoxelSize * 0.5f;
 
         float3 centerPos = pos * _VoxelSize + halfVoxelSize;
@@ -132,24 +138,6 @@ void CS_VoxelizeMesh(uint id : SV_DISPATCHTHREADID) {
     }
 }
 
-[numthreads(128,1,1)]
-void CS_Voxelize(uint id : SV_DISPATCHTHREADID) {
-    [branch]
-    if (0 <= id.x && id.x < _VoxelCount) {
-        uint3 voxelRes = uint3(_VoxelResolution);
-        uint x = id.x % (voxelRes.x);
-        uint y = (id.x / voxelRes.x) % voxelRes.y;
-        uint z = id.x / (voxelRes.x * voxelRes.y);
-        
-        float3 pos = float3(x, y, z);
-        float halfVoxelSize = _VoxelSize * 0.5f;
-
-        float3 centerPos = pos * _VoxelSize + halfVoxelSize - float3(_BoundsExtent.x, 0, _BoundsExtent.z) - _SmokeOrigin;
-
-        _Voxels[id.x] = length(centerPos / _Radius) <= 1 ? 1 : 0;
-    }
-}
-
 [numthreads(1,1,1)]
 void CS_Seed(uint id : SV_DISPATCHTHREADID) {
     float3 seedPos = _SmokeOrigin % _BoundsExtent;
@@ -158,7 +146,71 @@ void CS_Seed(uint id : SV_DISPATCHTHREADID) {
     seedPos *= _VoxelResolution;
     seedPos = round(seedPos);
 
+    _SmokeVoxels[to1D(seedPos)] = 1;
+}
 
+[numthreads(128, 1, 1)]
+void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
+    [branch]
+    if (0 <= id.x && id.x < _VoxelCount) {
+        int voxel = _SmokeVoxels[id.x];
+        int staticVoxel = _StaticVoxels[id.x];
 
-    _Voxels[to1D(seedPos)] = 1;
+        // Already filled in
+        if (voxel > 0) {
+            _PingVoxels[id.x] = voxel;
+            return;
+        }
+
+        // Voxel is occupied by static geometry
+        if (staticVoxel > 0) {
+            _PingVoxels[id.x] = 0;
+            return;
+        }
+
+        int3 voxelPos = to3D(id.x);
+
+        float3 pos = voxelPos;
+        float halfVoxelSize = _VoxelSize * 0.5f;
+
+        float3 centerPos = pos * _VoxelSize + halfVoxelSize - float3(_BoundsExtent.x, 0, _BoundsExtent.z) - _SmokeOrigin;
+
+        // Outside radius
+        if (length(centerPos / _Radius) > 1) {
+            _PingVoxels[id.x] = 0;
+            return;
+        }
+
+        int up = 0;
+        if (voxelPos.y + 1 < _VoxelResolution.y)
+            up = _SmokeVoxels[to1D(voxelPos + int3(0, 1, 0))];
+        
+        int down = 0;
+        if (voxelPos.y - 1 >= 0)
+            down = _SmokeVoxels[to1D(voxelPos + int3(0, -1, 0))];
+
+            
+        int left = 0;
+        if (voxelPos.x + 1 < _VoxelResolution.x)
+            left = _SmokeVoxels[to1D(voxelPos + int3(1, 0, 0))];
+
+        int right = 0;
+        if (voxelPos.x - 1 >= 0)
+            right = _SmokeVoxels[to1D(voxelPos + int3(-1, 0, 0))];
+
+        int backward = 0;
+        if (voxelPos.z + 1 < _VoxelResolution.z)
+            backward = _SmokeVoxels[to1D(voxelPos + int3(0, 0, 1))];
+
+        int forward = 0;
+        if (voxelPos.z - 1 >= 0)
+            forward = _SmokeVoxels[to1D(voxelPos + int3(0, 0, -1))];
+
+        _PingVoxels[id.x] = max(up, max(down, max(left, max(right, max(forward, backward)))));
+    }
+}
+
+[numthreads(128, 1, 1)]
+void CS_PingPong(uint id : SV_DISPATCHTHREADID) {
+    _Voxels[id.x] = _PingVoxels[id.x];
 }
