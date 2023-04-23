@@ -209,9 +209,6 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
 
         int distance = max(up, max(down, max(left, max(right, max(forward, backward)))));
 
-        if (up + down + left + right + backward + forward < 4)
-            distance = 0;
-
         _PingVoxels[id.x] = max(0, distance - 1);
     }
 }

@@ -50,9 +50,11 @@ public class Voxelizer : MonoBehaviour {
 
         staticVoxelsBuffer = new ComputeBuffer(totalVoxels, 4);
 
+        // Clear buffer
         voxelizeCompute.SetBuffer(0, "_Voxels", staticVoxelsBuffer);
         voxelizeCompute.Dispatch(0, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
 
+        // Precompute voxelized representation of the scene
         ComputeBuffer verticesBuffer, trianglesBuffer;
         foreach (Transform child in objectsToVoxelize.GetComponentsInChildren<Transform>()) {
             MeshFilter meshFilter = child.gameObject.GetComponent<MeshFilter>();
@@ -84,9 +86,21 @@ public class Voxelizer : MonoBehaviour {
 
         smokeVoxelsBuffer = new ComputeBuffer(totalVoxels, 4);
         smokePingVoxelsBuffer = new ComputeBuffer(totalVoxels, 4);
+        
+        // Clear buffers
         voxelizeCompute.SetBuffer(0, "_Voxels", smokeVoxelsBuffer);
-        voxelizeCompute.SetBuffer(2, "_SmokeVoxels", smokeVoxelsBuffer);
         voxelizeCompute.Dispatch(0, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
+        voxelizeCompute.SetBuffer(0, "_Voxels", smokePingVoxelsBuffer);
+        voxelizeCompute.Dispatch(0, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
+        
+        voxelizeCompute.SetBuffer(2, "_SmokeVoxels", smokeVoxelsBuffer);
+
+        voxelizeCompute.SetBuffer(3, "_StaticVoxels", staticVoxelsBuffer);
+        voxelizeCompute.SetBuffer(3, "_SmokeVoxels", smokeVoxelsBuffer);
+        voxelizeCompute.SetBuffer(3, "_PingVoxels", smokePingVoxelsBuffer);
+        
+        voxelizeCompute.SetBuffer(4, "_Voxels", smokeVoxelsBuffer);
+        voxelizeCompute.SetBuffer(4, "_PingVoxels", smokePingVoxelsBuffer);
 
         // Debug instancing args
         argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
@@ -120,29 +134,14 @@ public class Voxelizer : MonoBehaviour {
 
         if (iterateFill || constantFill) {
             voxelizeCompute.SetVector("_Radius", Vector3.Lerp(Vector3.zero, maxRadius, Easing(radius)));
-            voxelizeCompute.SetBuffer(3, "_StaticVoxels", staticVoxelsBuffer);
-            voxelizeCompute.SetBuffer(3, "_SmokeVoxels", smokeVoxelsBuffer);
-            voxelizeCompute.SetBuffer(3, "_PingVoxels", smokePingVoxelsBuffer);
 
             voxelizeCompute.Dispatch(3, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
-            
-            voxelizeCompute.SetBuffer(4, "_Voxels", smokeVoxelsBuffer);
-            voxelizeCompute.SetBuffer(4, "_PingVoxels", smokePingVoxelsBuffer);
             voxelizeCompute.Dispatch(4, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
 
             iterateFill = false;
             radius += growthSpeed * Time.deltaTime;
         }
 
-
-        /*
-        voxelizeCompute.SetBuffer(2, "_Voxels", smokeVoxelsBuffer);
-        voxelizeCompute.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
-        voxelizeCompute.SetVector("_BoundsExtent", boundsExtent);
-        voxelizeCompute.SetVector("_Radius", Vector3.Lerp(Vector3.zero, maxRadius, Easing(radius)));
-        voxelizeCompute.SetInt("_VoxelCount", totalVoxels);
-        voxelizeCompute.Dispatch(2, 1, 1, 1);
-        */
         if (debugStaticVoxels) {
             debugVoxelMaterial.SetBuffer("_Voxels", staticVoxelsBuffer);
             debugVoxelMaterial.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));

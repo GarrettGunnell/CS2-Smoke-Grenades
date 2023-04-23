@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 997
   m_ShowMode: 4
-  m_Title: Hierarchy
+  m_Title: Game
   m_RootView: {fileID: 6}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -223,7 +223,7 @@ MonoBehaviour:
   m_MinSize: {x: 200, y: 200}
   m_MaxSize: {x: 16192, y: 16192}
   vertical: 1
-  controlID: 49
+  controlID: 58
 --- !u!114 &10
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -248,7 +248,7 @@ MonoBehaviour:
   m_MinSize: {x: 200, y: 100}
   m_MaxSize: {x: 16192, y: 8096}
   vertical: 0
-  controlID: 50
+  controlID: 59
 --- !u!114 &11
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -519,7 +519,7 @@ MonoBehaviour:
       scrollPos: {x: 0, y: 0}
       m_SelectedIDs: 3a5a0000
       m_LastClickedID: 23098
-      m_ExpandedIDs: 38fbffff0c5a0000
+      m_ExpandedIDs: 38fbffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -801,9 +801,9 @@ MonoBehaviour:
   m_PlayAudio: 0
   m_AudioPlay: 0
   m_Position:
-    m_Target: {x: -0.24724793, y: 1.5234038, z: -3.787545}
+    m_Target: {x: -12.627248, y: -4.725972, z: 1.4556543}
     speed: 2
-    m_Value: {x: -0.24724793, y: 1.5234038, z: -3.787545}
+    m_Value: {x: -12.627248, y: -4.725972, z: 1.4556543}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -850,13 +850,13 @@ MonoBehaviour:
     m_GridAxis: 1
     m_gridOpacity: 0.5
   m_Rotation:
-    m_Target: {x: 0.24787302, y: 0.11412301, z: -0.029617136, w: 0.9615547}
+    m_Target: {x: 0.46326837, y: -0.44827732, z: 0.29400542, w: 0.7056413}
     speed: 2
-    m_Value: {x: 0.24783704, y: 0.11556927, z: -0.029989967, w: 0.96141624}
+    m_Value: {x: 0.4632825, y: -0.448291, z: 0.2940144, w: 0.70566285}
   m_Size:
-    m_Target: 7.665646
+    m_Target: 8.0106
     speed: 2
-    m_Value: 7.665646
+    m_Value: 8.0106
   m_Ortho:
     m_Target: 0
     speed: 2
@@ -923,7 +923,7 @@ MonoBehaviour:
   m_UseMipMap: 0
   m_VSyncEnabled: 0
   m_Gizmos: 0
-  m_Stats: 0
+  m_Stats: 1
   m_SelectedSizes: 00000000000000000000000000000000000000000000000000000000000000000000000000000000
   m_ZoomArea:
     m_HRangeLocked: 0
