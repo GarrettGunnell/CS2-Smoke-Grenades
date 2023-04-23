@@ -2,14 +2,14 @@
 #pragma kernel CS_DebugNoise
 #pragma kernel CS_RayMarchSmoke
 
-#include "UnityCG.cginc"
-#include "UnityStandardBRDF.cginc"
 #include "Packages/jp.keijiro.noiseshader/Shader/ClassicNoise3D.hlsl"
 
 #define STEPS 256
 #define MIN_HIT_DISTANCE 0.001
 #define MAX_DISTANCE 1000
 #define PI 3.1415926538
+
+RWStructuredBuffer<int> _SmokeVoxels;
 
 RWTexture3D<half> _RWNoiseTex;
 Texture3D<half> _NoiseTex;
@@ -262,6 +262,10 @@ float phase(float g, float cos_theta) {
     return p;
 }
 
+uint to1D(uint3 pos) {
+    return pos.x + pos.y * 60 + pos.z * 60 * 10;
+}
+
 float getDensity(float3 pos) {
     float3 uvw = pos / _SmokeSize;
     uvw += _AnimationDirection * _FrameTime;
@@ -271,8 +275,25 @@ float getDensity(float3 pos) {
 
     float n = _NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r;
 
+    float v = 0;
+
+    float3 _BoundsExtent = float3(15.0f, 2.5f, 15.0f);
+
+    if (abs(dot(pos, float3(1, 0, 0))) <= _BoundsExtent.x &&
+        abs(dot(pos, float3(0, 1, 0))) <= _BoundsExtent.y * 2 &&
+        abs(dot(pos, float3(0, 0, 1))) <= _BoundsExtent.z)
+    {
+        float3 seedPos = pos;
+        seedPos.xz += _BoundsExtent.xz;
+        seedPos /= _BoundsExtent * 2;
+        seedPos *= uint3(60, 10, 60);
+        //seedPos = round(seedPos);
+
+        v = (_SmokeVoxels[to1D(seedPos)]) / 16.0f;
+    }
+
     //return (0.5f - dist * 0.5f) + n * (1 - falloff);
-    return saturate(_NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r * (1 - falloff));
+    return saturate((v - n) * (1 - falloff));
 }
 
 [numthreads(8,8,1)]

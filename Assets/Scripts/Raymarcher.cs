@@ -4,6 +4,8 @@ using UnityEngine;
 
 [RequireComponent(typeof(Camera))]
 public class Raymarcher : MonoBehaviour {
+    public Voxelizer smokeVoxelData = null;
+
     public enum Res {
         FullResolution = 0,
         HalfResolution,
@@ -124,7 +126,6 @@ public class Raymarcher : MonoBehaviour {
 
     [Range(-1.0f, 1.0f)]
     public float scatteringAnisotropy = 0.0f;
-
     
     [Range(0.0f, 1.0f)]
     public float densityFalloff = 0.25f;
@@ -160,6 +161,8 @@ public class Raymarcher : MonoBehaviour {
     private RenderTexture noiseTex, depthTex;
     private RenderTexture smokeAlbedoFullTex, smokeAlbedoHalfTex, smokeAlbedoQuarterTex;
     private RenderTexture smokeMaskFullTex, smokeMaskHalfTex, smokeMaskQuarterTex;
+
+    private ComputeBuffer smokeVoxelBuffer;
 
     float Easing(float x) {
         return Mathf.Sin((radius * Mathf.PI) / 2);
@@ -241,7 +244,6 @@ public class Raymarcher : MonoBehaviour {
 
         cam = GetComponent<Camera>();
         sun = GameObject.Find("Directional Light");
-
     }
 
     void OnEnable() {
@@ -260,6 +262,11 @@ public class Raymarcher : MonoBehaviour {
 
         if (updateNoise) {
             UpdateNoise();
+        }
+
+        if (smokeVoxelData != null) {
+            smokeVoxelBuffer = smokeVoxelData.GetSmokeVoxelBuffer(); 
+            raymarchCompute.SetBuffer(2, "_SmokeVoxels", smokeVoxelBuffer);
         }
     }
 
