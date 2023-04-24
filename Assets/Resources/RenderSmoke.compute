@@ -51,17 +51,52 @@ int _PhaseFunction;
 
 float3 _AnimationDirection;
 
+StructuredBuffer<float3> _FeaturePoints;
 float3 _NoiseRes;
 int _Octaves;
 float _Persistance, _Amplitude, _Warp, _Add;
 int _CellSize, _Roughness, _Period, _Frequency, _AbsMode, _ClampNoise;
+
+float worley(float3 coord) {
+    int3 cell = floor(coord / 16);
+
+    float3 localSamplePos = float3(coord / 16 - cell);
+
+    float dist = 1.0f;
+
+    int _AxisCellCount = 16;
+
+    for (int x = -1; x <= 1; ++x) {
+        for (int y = -1; y <= 1; ++y) {
+            for (int z = -1; z <= 1; ++z) {
+                int3 cellCoordinate = cell + int3(x, y, z);
+                int x = cellCoordinate.x;
+                int y = cellCoordinate.y;
+                int z = cellCoordinate.z;
+
+                if (x == -1 || x == _AxisCellCount || y == -1 || y == _AxisCellCount || z == -1 || z == _AxisCellCount) {
+                    int3 wrappedCellCoordinate = fmod(cellCoordinate + _AxisCellCount, (int3)_AxisCellCount);
+                    int wrappedCellIndex = wrappedCellCoordinate.x + _AxisCellCount * (wrappedCellCoordinate.y + wrappedCellCoordinate.z * _AxisCellCount);
+                    float3 featurePointOffset = cellCoordinate + _FeaturePoints[wrappedCellIndex];
+                    dist = min(dist, distance(cell + localSamplePos, featurePointOffset));
+                } else {
+                    int cellIndex = cellCoordinate.x + _AxisCellCount * (cellCoordinate.y + cellCoordinate.z * _AxisCellCount);
+                    float3 featurePointOffset = cellCoordinate + _FeaturePoints[cellIndex];
+                    dist = min(dist, distance(cell + localSamplePos, featurePointOffset));
+                }
+            }
+        }
+    }
+
+    return 1 - dist;
+}
 
 [numthreads(8,8,8)]
 void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
     //Convert to UV
     float3 pos = float3(id.xyz) / _NoiseRes;
     pos *= _CellSize;
-
+    /*
     float n = 0.0f;
 
     float G = exp2(-_Persistance);
@@ -78,8 +113,9 @@ void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
 
     n += _Add;
     n = _AbsMode == 2 ? abs(n) : n;
-
-    _RWNoiseTex[id.xyz] = _ClampNoise ? saturate(n) : max(0, n);
+    */
+    //_RWNoiseTex[id.xyz] = _ClampNoise ? saturate(n) : max(0, n);
+    _RWNoiseTex[id.xyz] = worley(id.xyz);
 }
 
 uint _DebugNoiseSlice;
