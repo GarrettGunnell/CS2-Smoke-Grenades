@@ -54,10 +54,17 @@ float3 _AnimationDirection;
 StructuredBuffer<float3> _FeaturePoints;
 float3 _NoiseRes;
 int _Octaves;
-float _Persistance, _Amplitude, _Warp, _Add;
-int _CellSize, _AxisCellCount, _Roughness, _Period, _Frequency, _AbsMode, _ClampNoise;
+float _Persistance, _Amplitude, _Warp, _Add, _Roughness;
+int _CellSize, _AxisCellCount, _Period, _Frequency, _AbsMode, _InvertNoise;
 
-float worley(float3 coord) {
+float hash(uint n) {
+    // integer hash copied from Hugo Elias
+	n = (n << 13U) ^ n;
+    n = n * (n * n * 15731U + 0x789221U) + 0x1376312589U;
+    return float(n & uint(0x7fffffffU)) / float(0x7fffffff);
+}
+
+float worley(float3 coord, int axisCellCount) {
     int3 cell = floor(coord / _CellSize);
 
     float3 localSamplePos = float3(coord / _CellSize - cell);
@@ -72,14 +79,14 @@ float worley(float3 coord) {
                 int y = cellCoordinate.y;
                 int z = cellCoordinate.z;
 
-                if (x == -1 || x == _AxisCellCount || y == -1 || y == _AxisCellCount || z == -1 || z == _AxisCellCount) {
-                    int3 wrappedCellCoordinate = fmod(cellCoordinate + _AxisCellCount, (int3)_AxisCellCount);
-                    int wrappedCellIndex = wrappedCellCoordinate.x + _AxisCellCount * (wrappedCellCoordinate.y + wrappedCellCoordinate.z * _AxisCellCount);
-                    float3 featurePointOffset = cellCoordinate + _FeaturePoints[wrappedCellIndex];
+                if (x == -1 || x == axisCellCount || y == -1 || y == axisCellCount || z == -1 || z == axisCellCount) {
+                    int3 wrappedCellCoordinate = fmod(cellCoordinate + axisCellCount, (int3)axisCellCount);
+                    int wrappedCellIndex = wrappedCellCoordinate.x + axisCellCount * (wrappedCellCoordinate.y + wrappedCellCoordinate.z * axisCellCount);
+                    float3 featurePointOffset = cellCoordinate + float3(hash(wrappedCellIndex), hash(wrappedCellIndex * 2), hash(wrappedCellIndex * 3));
                     dist = min(dist, distance(cell + localSamplePos, featurePointOffset));
                 } else {
-                    int cellIndex = cellCoordinate.x + _AxisCellCount * (cellCoordinate.y + cellCoordinate.z * _AxisCellCount);
-                    float3 featurePointOffset = cellCoordinate + _FeaturePoints[cellIndex];
+                    int cellIndex = cellCoordinate.x + axisCellCount * (cellCoordinate.y + cellCoordinate.z * axisCellCount);
+                    float3 featurePointOffset = cellCoordinate + float3(hash(cellIndex), hash(cellIndex * 2), hash(cellIndex * 3));
                     dist = min(dist, distance(cell + localSamplePos, featurePointOffset));
                 }
             }
@@ -92,28 +99,23 @@ float worley(float3 coord) {
 [numthreads(8,8,8)]
 void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
     //Convert to UV
-    float3 pos = float3(id.xyz) / _NoiseRes;
-    pos *= _CellSize;
-    /*
+    float3 pos = float3(id.xyz);
+    
     float n = 0.0f;
 
-    float G = exp2(-_Persistance);
-    float f = rcp(exp2(_Frequency));
-    float a = _Amplitude;
+    float f = 1;
+    float factor = 1;
 
     for (int i = 0; i < _Octaves; ++i) {
-        float noise = PeriodicNoise(pos.xyz * f + i * _Warp, _Period * f);
-        noise = (_AbsMode == 1) ? abs(noise) : noise;
-        n += a * noise;
+        float noise = worley(pos.xyz * f + i * _Warp, _AxisCellCount * f) * factor;
+        n += noise;
         f *= _Roughness;
-        a *= G;
+        factor *= _Persistance;
     }
 
     n += _Add;
-    n = _AbsMode == 2 ? abs(n) : n;
-    */
-    //_RWNoiseTex[id.xyz] = _ClampNoise ? saturate(n) : max(0, n);
-    _RWNoiseTex[id.xyz] = worley(id.xyz);
+    
+    _RWNoiseTex[id.xyz] = _InvertNoise ? 1 - saturate(n) : saturate(n);
 }
 
 uint _DebugNoiseSlice;
@@ -165,13 +167,6 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
     }
 
     _SmokeTex[id.xy] = col;
-}
-
-float hash(uint n) {
-    // integer hash copied from Hugo Elias
-	n = (n << 13U) ^ n;
-    n = n * (n * n * 15731U + 0x789221U) + 0x1376312589U;
-    return float(n & uint(0x7fffffffU)) / float(0x7fffffff);
 }
 
 bool solveQuadratic(float a, float b, float c, inout float t0, inout float t1) {

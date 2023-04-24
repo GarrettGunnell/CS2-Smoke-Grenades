@@ -32,8 +32,8 @@ public class Raymarcher : MonoBehaviour {
     [Range(0.01f, 1.0f)]
     public float persistance = 1.0f;
 
-    [Range(1, 10)]
-    public int roughness = 2;
+    [Range(0.01f, 10.0f)]
+    public float roughness = 2;
     
     [Range(0.0f, 5.0f)]
     public float warp = 0.0f;
@@ -50,7 +50,7 @@ public class Raymarcher : MonoBehaviour {
         AbsResult
     } public AbsMode absMode;
 
-    public bool clampNoise = false;
+    public bool invertNoise = false;
 
     public bool updateNoise = false;
 
@@ -165,27 +165,14 @@ public class Raymarcher : MonoBehaviour {
     private RenderTexture smokeAlbedoFullTex, smokeAlbedoHalfTex, smokeAlbedoQuarterTex;
     private RenderTexture smokeMaskFullTex, smokeMaskHalfTex, smokeMaskQuarterTex;
 
-    private ComputeBuffer smokeVoxelBuffer, featurePointsBuffer;
-    private int featureCount;
+    private ComputeBuffer smokeVoxelBuffer;
 
     float Easing(float x) {
         return Mathf.Sin((radius * Mathf.PI) / 2);
     }
 
     void UpdateNoise() {
-        if(featureCount != axisCellCount * axisCellCount * axisCellCount) {
-            featureCount = axisCellCount * axisCellCount * axisCellCount;
-            Vector3[] points = new Vector3[64 * 64 * 64];
-            for (int i = 0; i < featureCount; ++i) {
-                points[i] = new Vector3(Random.value, Random.value, Random.value);
-            } 
-
-            featurePointsBuffer.SetData(points);
-        }
-
-
         raymarchCompute.SetTexture(generateNoisePass, "_RWNoiseTex", noiseTex);
-        raymarchCompute.SetBuffer(generateNoisePass, "_FeaturePoints", featurePointsBuffer);
         raymarchCompute.SetInt("_Octaves", octaves);
         raymarchCompute.SetInt("_CellSize", cellSize);
         raymarchCompute.SetInt("_AxisCellCount", axisCellCount);
@@ -194,9 +181,9 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_Amplitude", amplitude);
         raymarchCompute.SetFloat("_Warp", warp);
         raymarchCompute.SetFloat("_Add", add);
-        raymarchCompute.SetInt("_Roughness", roughness);
+        raymarchCompute.SetFloat("_Roughness", roughness);
         raymarchCompute.SetInt("_Period", period);
-        raymarchCompute.SetInt("_ClampNoise", clampNoise ? 1 : 0);
+        raymarchCompute.SetInt("_InvertNoise", invertNoise ? 1 : 0);
         raymarchCompute.SetInt("_AbsMode", (int)absMode);
         raymarchCompute.SetVector("_NoiseRes", new Vector4(128, 128, 128, 0));
 
@@ -217,17 +204,6 @@ public class Raymarcher : MonoBehaviour {
         noiseTex.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
         noiseTex.volumeDepth = 128;
         noiseTex.Create();
-
-        Random.InitState(Mathf.CeilToInt(Random.value * 10000));
-
-        featureCount = axisCellCount * axisCellCount * axisCellCount;
-        Vector3[] points = new Vector3[64 * 64 * 64];
-        for (int i = 0; i < featureCount; ++i) {
-            points[i] = new Vector3(Random.value, Random.value, Random.value);
-        }
-
-        featurePointsBuffer = new ComputeBuffer(64 * 64 * 64, sizeof(float) * 3);
-        featurePointsBuffer.SetData(points);
 
         UpdateNoise();
     }
@@ -298,10 +274,6 @@ public class Raymarcher : MonoBehaviour {
             raymarchCompute.SetVector("_BoundsExtent", smokeVoxelData.GetBoundsExtent());
             raymarchCompute.SetVector("_VoxelResolution", smokeVoxelData.GetVoxelResolution());
         }
-    }
-
-    void OnDisable() {
-        featurePointsBuffer.Release();
     }
 
     private RenderTexture GetSmokeAlbedoTex() {

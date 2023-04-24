@@ -874,37 +874,39 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ea8210bf91c402945aa5ce5f8345d2ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  smokeVoxelData: {fileID: 1766898645}
   resolutionScale: 2
-  octaves: 6
+  octaves: 1
   cellSize: 32
-  frequency: 4
-  amplitude: 3.4
-  persistance: 1
-  roughness: 6
-  warp: 0
+  axisCellCount: 4
+  frequency: 2
+  amplitude: 1
+  persistance: 0.515
+  roughness: 3
+  warp: 0.76
   add: 0
   period: 32
-  absMode: 2
+  absMode: 0
   clampNoise: 0
   updateNoise: 0
   debugNoise: 0
   debugTiledNoise: 0
   debugNoiseAxis: 1
   debugNoiseSlice: 0
-  sdfShape: 0
-  cubeParams: {x: 0, y: 0, z: 0, w: 2}
+  sdfShape: 1
+  cubeParams: {x: 0, y: 0, z: 0, w: 6}
   maxRadius: 3
   growthSpeed: 1
   restartAnimation: 0
   lightColor: {r: 3.5816119, g: 2.7608259, b: 1.4363756, a: 0}
   smokeColor: {r: 0.05, g: 0.0465, b: 0.043, a: 0}
-  stepCount: 64
-  lightStepCount: 8
+  stepCount: 128
+  lightStepCount: 16
   smokeSize: 8
   volumeDensity: 1
   absorptionCoefficient: 0.5
@@ -915,8 +917,8 @@ MonoBehaviour:
   ambientDensity: 1
   phaseFunction: 1
   scatteringAnisotropy: 0.37
-  densityFalloff: 0.25
-  animationDirection: {x: 0.15, y: -0.1, z: -0.05}
+  densityFalloff: 0
+  animationDirection: {x: 0, y: -0.1, z: 0}
   bicubicUpscale: 1
   sharpness: 0
   debugView: 0
@@ -1247,7 +1249,7 @@ MonoBehaviour:
   intersectionBias: 1
   debugMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   debugStaticVoxels: 0
-  debugSmokeVoxels: 1
+  debugSmokeVoxels: 0
   maxRadius: {x: 5, y: 4, z: 5}
   growthSpeed: 2.5
   maxFillSteps: 16
