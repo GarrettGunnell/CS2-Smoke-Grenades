@@ -20,6 +20,9 @@ public class Raymarcher : MonoBehaviour {
     [Range(1, 64)]
     public int cellSize = 16;
 
+    [Range(1, 64)]
+    public int axisCellCount = 4;
+
     [Range(1, 16)]
     public int frequency = 1;
 
@@ -163,16 +166,29 @@ public class Raymarcher : MonoBehaviour {
     private RenderTexture smokeMaskFullTex, smokeMaskHalfTex, smokeMaskQuarterTex;
 
     private ComputeBuffer smokeVoxelBuffer, featurePointsBuffer;
+    private int featureCount;
 
     float Easing(float x) {
         return Mathf.Sin((radius * Mathf.PI) / 2);
     }
 
     void UpdateNoise() {
+        if(featureCount != axisCellCount * axisCellCount * axisCellCount) {
+            featureCount = axisCellCount * axisCellCount * axisCellCount;
+            Vector3[] points = new Vector3[64 * 64 * 64];
+            for (int i = 0; i < featureCount; ++i) {
+                points[i] = new Vector3(Random.value, Random.value, Random.value);
+            } 
+
+            featurePointsBuffer.SetData(points);
+        }
+
+
         raymarchCompute.SetTexture(generateNoisePass, "_RWNoiseTex", noiseTex);
         raymarchCompute.SetBuffer(generateNoisePass, "_FeaturePoints", featurePointsBuffer);
         raymarchCompute.SetInt("_Octaves", octaves);
         raymarchCompute.SetInt("_CellSize", cellSize);
+        raymarchCompute.SetInt("_AxisCellCount", axisCellCount);
         raymarchCompute.SetFloat("_Persistance", persistance);
         raymarchCompute.SetInt("_Frequency", frequency - 1);
         raymarchCompute.SetFloat("_Amplitude", amplitude);
@@ -202,13 +218,15 @@ public class Raymarcher : MonoBehaviour {
         noiseTex.volumeDepth = 128;
         noiseTex.Create();
 
-        int count = 16 * 16 * 16;
-        Vector3[] points = new Vector3[count];
-        for (int i = 0; i < count; ++i) {
+        Random.InitState(Mathf.CeilToInt(Random.value * 10000));
+
+        featureCount = axisCellCount * axisCellCount * axisCellCount;
+        Vector3[] points = new Vector3[64 * 64 * 64];
+        for (int i = 0; i < featureCount; ++i) {
             points[i] = new Vector3(Random.value, Random.value, Random.value);
         }
 
-        featurePointsBuffer = new ComputeBuffer(count, sizeof(float) * 3);
+        featurePointsBuffer = new ComputeBuffer(64 * 64 * 64, sizeof(float) * 3);
         featurePointsBuffer.SetData(points);
 
         UpdateNoise();

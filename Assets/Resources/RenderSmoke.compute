@@ -55,16 +55,14 @@ StructuredBuffer<float3> _FeaturePoints;
 float3 _NoiseRes;
 int _Octaves;
 float _Persistance, _Amplitude, _Warp, _Add;
-int _CellSize, _Roughness, _Period, _Frequency, _AbsMode, _ClampNoise;
+int _CellSize, _AxisCellCount, _Roughness, _Period, _Frequency, _AbsMode, _ClampNoise;
 
 float worley(float3 coord) {
-    int3 cell = floor(coord / 16);
+    int3 cell = floor(coord / _CellSize);
 
-    float3 localSamplePos = float3(coord / 16 - cell);
+    float3 localSamplePos = float3(coord / _CellSize - cell);
 
     float dist = 1.0f;
-
-    int _AxisCellCount = 16;
 
     for (int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y) {
@@ -311,7 +309,7 @@ float getDensity(float3 pos) {
     float dist = min(1.0f, dot(vp, vp) / (_Radius * _Radius));
     float falloff = smoothstep(_DensityFalloff, 1.0f, dist);
 
-    float n = _NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r;
+    float n = _NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r * 1.5;
 
     int v = 0;
 
@@ -329,7 +327,7 @@ float getDensity(float3 pos) {
     }
 
     //return (0.5f - dist * 0.5f) + n * (1 - falloff);
-    return saturate((v + n * v) * (1 - falloff));
+    return saturate((v - n) * (1 - falloff));
 }
 
 [numthreads(8,8,1)]
