@@ -39,6 +39,18 @@ public class Voxelizer : MonoBehaviour {
         return smokeVoxelsBuffer;
     }
 
+    public Vector3 GetVoxelResolution() {
+        return new Vector3(voxelsX, voxelsY, voxelsZ);
+    }
+
+    public Vector3 GetBoundsExtent() {
+        return boundsExtent;
+    }
+
+    public float GetVoxelSize() {
+        return voxelSize;
+    }
+
     void OnEnable() {
         radius = 0.0f;
         debugVoxelMaterial = new Material(Shader.Find("Hidden/VisualizeVoxels"));

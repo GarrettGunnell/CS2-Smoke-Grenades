@@ -267,6 +267,8 @@ public class Raymarcher : MonoBehaviour {
         if (smokeVoxelData != null) {
             smokeVoxelBuffer = smokeVoxelData.GetSmokeVoxelBuffer(); 
             raymarchCompute.SetBuffer(2, "_SmokeVoxels", smokeVoxelBuffer);
+            raymarchCompute.SetVector("_BoundsExtent", smokeVoxelData.GetBoundsExtent());
+            raymarchCompute.SetVector("_VoxelResolution", smokeVoxelData.GetVoxelResolution());
         }
     }
 
