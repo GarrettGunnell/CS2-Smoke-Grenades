@@ -55,7 +55,7 @@ StructuredBuffer<float3> _FeaturePoints;
 float3 _NoiseRes;
 int _Octaves;
 float _Persistance, _Amplitude, _Warp, _Add, _Roughness;
-int _CellSize, _AxisCellCount, _Period, _Frequency, _AbsMode, _InvertNoise;
+int _CellSize, _AxisCellCount, _Period, _Frequency, _AbsMode, _InvertNoise, _Seed;
 
 float hash(uint n) {
     // integer hash copied from Hugo Elias
@@ -82,18 +82,20 @@ float worley(float3 coord, int axisCellCount) {
                 if (x == -1 || x == axisCellCount || y == -1 || y == axisCellCount || z == -1 || z == axisCellCount) {
                     int3 wrappedCellCoordinate = fmod(cellCoordinate + axisCellCount, (int3)axisCellCount);
                     int wrappedCellIndex = wrappedCellCoordinate.x + axisCellCount * (wrappedCellCoordinate.y + wrappedCellCoordinate.z * axisCellCount);
-                    float3 featurePointOffset = cellCoordinate + float3(hash(wrappedCellIndex), hash(wrappedCellIndex * 2), hash(wrappedCellIndex * 3));
+                    float3 featurePointOffset = cellCoordinate + float3(hash(_Seed + wrappedCellIndex), hash(_Seed + wrappedCellIndex * 2), hash(_Seed + wrappedCellIndex * 3));
                     dist = min(dist, distance(cell + localSamplePos, featurePointOffset));
                 } else {
                     int cellIndex = cellCoordinate.x + axisCellCount * (cellCoordinate.y + cellCoordinate.z * axisCellCount);
-                    float3 featurePointOffset = cellCoordinate + float3(hash(cellIndex), hash(cellIndex * 2), hash(cellIndex * 3));
+                    float3 featurePointOffset = cellCoordinate + float3(hash(_Seed + cellIndex), hash(_Seed + cellIndex * 2), hash(_Seed + cellIndex * 3));
                     dist = min(dist, distance(cell + localSamplePos, featurePointOffset));
                 }
             }
         }
     }
 
-    return 1 - dist;
+    dist = sqrt(1.0f - dist * dist);
+    dist *= dist * dist * dist * dist * dist;
+    return dist * 0.75;
 }
 
 [numthreads(8,8,8)]
@@ -103,14 +105,15 @@ void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
     
     float n = 0.0f;
 
-    float f = 1;
-    float factor = 1;
+    float G = exp2(-1);
+    float f = 1.0f;
+    float a = 1.0f;
 
     for (int i = 0; i < _Octaves; ++i) {
-        float noise = worley(pos.xyz * f + i * _Warp, _AxisCellCount * f) * factor;
+        float noise = worley(pos.xyz * f + i * _Warp, _AxisCellCount * f) * a;
         n += noise;
-        f *= _Roughness;
-        factor *= _Persistance;
+        f *= 2.0f;
+        a *= G;
     }
 
     n += _Add;
@@ -157,7 +160,6 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
         float3 pos = origin + direction * d;
 
         if ((all(pos > -1) && all(pos < 1)) || _DebugTiledNoise) {
-            pos /= _CellSize;
             if (_DebugAxis == 0) pos.x = (_DebugNoiseSlice - 1) / _NoiseRes.x;
             if (_DebugAxis == 1) pos.y = (_DebugNoiseSlice - 1) / _NoiseRes.y;
             if (_DebugAxis == 2) pos.z = (_DebugNoiseSlice - 1) / _NoiseRes.z;

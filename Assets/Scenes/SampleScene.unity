@@ -881,7 +881,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   smokeVoxelData: {fileID: 1766898645}
   resolutionScale: 2
-  octaves: 1
+  octaves: 6
   cellSize: 32
   axisCellCount: 4
   frequency: 2
@@ -892,7 +892,7 @@ MonoBehaviour:
   add: 0
   period: 32
   absMode: 0
-  clampNoise: 0
+  invertNoise: 0
   updateNoise: 0
   debugNoise: 0
   debugTiledNoise: 0

@@ -14,10 +14,13 @@ public class Raymarcher : MonoBehaviour {
 
     [Header("Noise Settings")]
     [Space(5)]
+    [Range(0, 100000)]
+    public int seed = 0;
+
     [Range(1, 16)]
     public int octaves = 1;
 
-    [Range(1, 64)]
+    [Range(1, 128)]
     public int cellSize = 16;
 
     [Range(1, 64)]
@@ -185,6 +188,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetInt("_Period", period);
         raymarchCompute.SetInt("_InvertNoise", invertNoise ? 1 : 0);
         raymarchCompute.SetInt("_AbsMode", (int)absMode);
+        raymarchCompute.SetInt("_Seed", seed);
         raymarchCompute.SetVector("_NoiseRes", new Vector4(128, 128, 128, 0));
 
         // 128 / 8
