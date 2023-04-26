@@ -230,33 +230,55 @@ void CS_PingPong(uint id : SV_DISPATCHTHREADID) {
 
         int3 voxelPos = to3D(id.x);
 
-        int up = 0;
-        if (voxelPos.y + 1 < _VoxelResolution.y)
-            up = saturate(_PingVoxels[to1D(voxelPos + int3(0, 1, 0))].x);
-        
-        int down = 0;
-        if (voxelPos.y - 1 >= 0)
-            down = saturate(_PingVoxels[to1D(voxelPos + int3(0, -1, 0))].x);
+        int2 up = 0;
+        if (voxelPos.y + 1 < _VoxelResolution.y) {
+            int idx = to1D(voxelPos + int3(0, 1, 0));
+            up.x = saturate(_PingVoxels[idx].x);
+            up.y = _StaticVoxels[idx];
+        }
 
-        int left = 0;
-        if (voxelPos.x + 1 < _VoxelResolution.x)
-            left = saturate(_PingVoxels[to1D(voxelPos + int3(1, 0, 0))].x);
+        int2 down = 0;
+        if (voxelPos.y - 1 >= 0) {
+            int idx = to1D(voxelPos + int3(0, -1, 0));
+            down.x = saturate(_PingVoxels[idx].x);
+            down.y = _StaticVoxels[idx];
+        }
 
-        int right = 0;
-        if (voxelPos.x - 1 >= 0)
-            right = saturate(_PingVoxels[to1D(voxelPos + int3(-1, 0, 0))].x);
+        int2 left = 0;
+        if (voxelPos.x + 1 < _VoxelResolution.x) {
+            int idx = to1D(voxelPos + int3(1, 0, 0));
+            left.x = saturate(_PingVoxels[idx].x);
+            left.y = _StaticVoxels[idx];
+        }
 
-        int backward = 0;
-        if (voxelPos.z + 1 < _VoxelResolution.z)
-            backward = saturate(_PingVoxels[to1D(voxelPos + int3(0, 0, 1))].x);
+        int2 right = 0;
+        if (voxelPos.x - 1 >= 0) {
+            int idx = to1D(voxelPos + int3(-1, 0, 0));
+            right.x = saturate(_PingVoxels[idx].x);
+            right.y = _StaticVoxels[idx];
+        }
 
-        int forward = 0;
-        if (voxelPos.z - 1 >= 0)
-            forward = saturate(_PingVoxels[to1D(voxelPos + int3(0, 0, -1))].x);
-        
-        int neighborSum = up + down + left + right + backward + forward;
+        int2 backward = 0;
+        if (voxelPos.z + 1 < _VoxelResolution.z) {
+            int idx = to1D(voxelPos + int3(0, 0, 1));
+            backward.x = saturate(_PingVoxels[idx].x);
+            backward.y = _StaticVoxels[idx];
+        }
 
-        if (0 < neighborSum && neighborSum < 6) voxel.y = 1;
+        int2 forward = 0;
+        if (voxelPos.z - 1 >= 0) {
+            int idx = to1D(voxelPos + int3(0, 0, -1));
+            forward.x = saturate(_PingVoxels[idx].x);
+            forward.y = _StaticVoxels[idx];
+        }
+
+        int neighborSum = up.x + down.x + left.x + right.x + backward.x + forward.x;
+        int staticSum = up.y + down.y + left.y + right.y + backward.y + forward.y;
+        int totalSum = neighborSum + staticSum;
+
+        if (staticVoxel) voxel.y = neighborSum > 0 ? 1 : 0;
+        else if (voxelPos.y == 0) voxel.y = 0 < totalSum && totalSum < 5 ? 1 : 0;
+        else if (0 < totalSum && totalSum < 6) voxel.y = 1;
 
         _Voxels[id.x] = voxel;
     }
