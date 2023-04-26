@@ -14,7 +14,7 @@ StructuredBuffer<int> _MeshTriangleIndices;
 float4x4 _MeshLocalToWorld;
 
 float3 _VoxelResolution, _BoundsExtent;
-float3 _Radius;
+float4 _Radius;
 float3 _SmokeOrigin;
 uint _VoxelCount, _TriangleCount;
 float _VoxelSize, _IntersectionBias;
@@ -146,7 +146,6 @@ void CS_Seed(uint id : SV_DISPATCHTHREADID) {
     seedPos.xz += _BoundsExtent.xz;
     seedPos /= _BoundsExtent * 2;
     seedPos *= _VoxelResolution;
-    seedPos = round(seedPos);
 
     _SmokeVoxels[to1D(seedPos)] = _MaxFillSteps;
 }
@@ -177,8 +176,12 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
 
         float3 centerPos = pos * _VoxelSize + halfVoxelSize - float3(_BoundsExtent.x, 0, _BoundsExtent.z) - _SmokeOrigin;
 
+        float3 q = abs(centerPos) - _Radius.xyz;
+
+        float insideBox = length(max(q, 0.0f)) + min(max(q.x, max(q.y, q.z)), 0.0f) - _Radius.w;
+
         // Outside radius
-        if (length(centerPos / _Radius) > 1) {
+        if (insideBox > 0) {
             _PingVoxels[id.x] = 0;
             return;
         }

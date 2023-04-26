@@ -874,7 +874,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ea8210bf91c402945aa5ce5f8345d2ad, type: 3}
   m_Name: 
@@ -894,9 +894,9 @@ MonoBehaviour:
   period: 32
   absMode: 0
   invertNoise: 0
-  updateNoise: 1
-  debugNoise: 1
-  debugTiledNoise: 1
+  updateNoise: 0
+  debugNoise: 0
+  debugTiledNoise: 0
   debugNoiseAxis: 1
   debugNoiseSlice: 0
   sdfShape: 1
@@ -909,15 +909,15 @@ MonoBehaviour:
   stepCount: 128
   lightStepCount: 16
   smokeSize: 8
-  volumeDensity: 1
+  volumeDensity: 4
   absorptionCoefficient: 0.5
-  scatteringCoefficient: 0.5
+  scatteringCoefficient: 1
   extinctionColor: {r: 1, g: 1, b: 1, a: 1}
-  shadowDensity: 1
+  shadowDensity: 2
   ambientColor: {r: 1, g: 1, b: 1, a: 1}
   ambientDensity: 1
   phaseFunction: 1
-  scatteringAnisotropy: 0.37
+  scatteringAnisotropy: 0
   densityFalloff: 0
   animationDirection: {x: 0, y: -0.1, z: 0}
   bicubicUpscale: 1
@@ -1251,8 +1251,8 @@ MonoBehaviour:
   debugMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   debugStaticVoxels: 0
   debugSmokeVoxels: 0
-  maxRadius: {x: 5, y: 4, z: 5}
-  growthSpeed: 2.5
+  maxRadius: {x: 1.8, y: 1, z: 1.8, w: 3}
+  growthSpeed: 2
   maxFillSteps: 16
   iterateFill: 0
   constantFill: 1
