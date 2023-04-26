@@ -18,7 +18,7 @@ public class Voxelizer : MonoBehaviour {
     public bool debugSmokeVoxels = false;
     public bool debugEdgeVoxels = false;
 
-    public Vector4 maxRadius = new Vector4(1, 1, 1, 1);
+    public Vector3 maxRadius = new Vector3(1, 1, 1);
 
     [Range(0.01f, 5.0f)]
     public float growthSpeed = 1.0f;
@@ -131,7 +131,7 @@ public class Voxelizer : MonoBehaviour {
     }
 
     float Easing(float x) {
-        return 1 - 1 / (2 * x * x * x + 1);
+        return 1 - (1 - x) * (1 - x);
     }
 
     void Update() {
@@ -151,13 +151,14 @@ public class Voxelizer : MonoBehaviour {
         }
 
         if (iterateFill || constantFill) {
-            voxelizeCompute.SetVector("_Radius", Vector4.Lerp(Vector4.zero, maxRadius, Easing(radius)));
+            voxelizeCompute.SetVector("_Radius", Vector3.Lerp(Vector3.zero, maxRadius, Easing(radius)));
 
             voxelizeCompute.Dispatch(3, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
             voxelizeCompute.Dispatch(4, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
 
             iterateFill = false;
-            radius += growthSpeed * Time.deltaTime;
+            if (radius < 1)
+                radius += growthSpeed * Time.deltaTime;
         }
 
         if (debugStaticVoxels || debugSmokeVoxels || debugEdgeVoxels) {
