@@ -874,13 +874,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ea8210bf91c402945aa5ce5f8345d2ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   smokeVoxelData: {fileID: 1766898645}
-  resolutionScale: 0
+  resolutionScale: 2
   seed: 0
   octaves: 6
   cellSize: 32

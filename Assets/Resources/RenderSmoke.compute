@@ -9,7 +9,7 @@
 #define MAX_DISTANCE 1000
 #define PI 3.1415926538
 
-RWStructuredBuffer<int> _SmokeVoxels;
+RWStructuredBuffer<int2> _SmokeVoxels;
 float3 _BoundsExtent;
 float3 _VoxelResolution;
 
@@ -308,7 +308,7 @@ float getDensity(float3 pos) {
 
     float n = _NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r * 1.5;
 
-    int v = 0;
+    int2 v = 0;
 
     if (abs(dot(pos, float3(1, 0, 0))) <= _BoundsExtent.x &&
         abs(dot(pos, float3(0, 1, 0))) <= _BoundsExtent.y * 2 &&
@@ -324,7 +324,7 @@ float getDensity(float3 pos) {
     }
 
     //return (0.5f - dist * 0.5f) + n * (1 - falloff);
-    return saturate((v - n) * (1 - falloff));
+    return saturate(((v.x - v.y) + v.y * n) * (1 - falloff));
 }
 
 [numthreads(8,8,1)]
@@ -371,6 +371,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
             float3 samplePos = origin + t * rayDir;
             float sampleDensity = getDensity(samplePos);
+
             alpha *= exp(-baseDensity * sampleDensity * extinctionCoefficient);
 
             float3 lightHit = RaycastSmokeMesh(samplePos, -_SunDirection);

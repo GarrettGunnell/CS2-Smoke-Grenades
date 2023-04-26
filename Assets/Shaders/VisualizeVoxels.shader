@@ -12,11 +12,12 @@ Shader "Hidden/VisualizeVoxels" {
 			#include "UnityPBSLighting.cginc"
             #include "AutoLight.cginc"
 
-            StructuredBuffer<int> _Voxels;
+            StructuredBuffer<int2> _SmokeVoxels;
+            StructuredBuffer<int> _StaticVoxels;
             float3 _BoundsExtent;
             uint3 _VoxelResolution;
             float _VoxelSize;
-            int _MaxFillSteps;
+            int _MaxFillSteps, _DebugSmokeVoxels, _DebugStaticVoxels, _DebugEdgeVoxels;
 
 			struct VertexData {
 				float4 vertex : POSITION;
@@ -27,7 +28,7 @@ Shader "Hidden/VisualizeVoxels" {
 				float4 pos : SV_POSITION;
                 float3 hashCol : TEXCOORD0;
 				float3 normal : TEXCOORD1;
-                int steps : TEXCOORD2;
+                int edge : TEXCOORD2;
 			};
 
             float hash(uint n) {
@@ -46,8 +47,14 @@ Shader "Hidden/VisualizeVoxels" {
 
 
 				i.pos = UnityObjectToClipPos((v.vertex + float3(x, y, z)) * _VoxelSize + (_VoxelSize * 0.5f) - _BoundsExtent);
-                i.pos *= _Voxels[instanceID] > 0;
-                i.steps = _Voxels[instanceID];
+
+				if (_DebugSmokeVoxels)
+					i.pos *= saturate(_SmokeVoxels[instanceID].x);
+				if (_DebugEdgeVoxels)
+					i.pos *= _SmokeVoxels[instanceID].y;
+				if (_DebugStaticVoxels)
+					i.pos *= _StaticVoxels[instanceID];
+				
 				i.normal = UnityObjectToWorldNormal(v.normal);
                 i.hashCol = float3(hash(instanceID), hash(instanceID * 2), hash(instanceID * 3));
 
@@ -55,12 +62,10 @@ Shader "Hidden/VisualizeVoxels" {
 			}
 
 			float4 fp(v2f i) : SV_TARGET {
-                float ndotl = DotClamped(_WorldSpaceLightPos0.xyz, i.normal) * 0.5f + 0.5f;
+                float3 ndotl = DotClamped(_WorldSpaceLightPos0.xyz, i.normal) * 0.5f + 0.5f;
                 ndotl *= ndotl;
 
-                float3 c = (float)i.steps / (float)_MaxFillSteps * ndotl;
-
-				return float4(c.rgb, 1.0f);
+				return float4(ndotl, 1.0f);
 			}
 
 			ENDCG

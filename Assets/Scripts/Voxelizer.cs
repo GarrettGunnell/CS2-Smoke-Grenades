@@ -16,6 +16,7 @@ public class Voxelizer : MonoBehaviour {
 
     public bool debugStaticVoxels = false;
     public bool debugSmokeVoxels = false;
+    public bool debugEdgeVoxels = false;
 
     public Vector4 maxRadius = new Vector4(1, 1, 1, 1);
 
@@ -100,8 +101,8 @@ public class Voxelizer : MonoBehaviour {
             trianglesBuffer.Release();
         }
 
-        smokeVoxelsBuffer = new ComputeBuffer(totalVoxels, 4);
-        smokePingVoxelsBuffer = new ComputeBuffer(totalVoxels, 4);
+        smokeVoxelsBuffer = new ComputeBuffer(totalVoxels, sizeof(int) * 2);
+        smokePingVoxelsBuffer = new ComputeBuffer(totalVoxels, sizeof(int) * 2);
         
         // Clear buffers
         voxelizeCompute.SetBuffer(0, "_Voxels", smokeVoxelsBuffer);
@@ -117,6 +118,7 @@ public class Voxelizer : MonoBehaviour {
         
         voxelizeCompute.SetBuffer(4, "_Voxels", smokeVoxelsBuffer);
         voxelizeCompute.SetBuffer(4, "_PingVoxels", smokePingVoxelsBuffer);
+        voxelizeCompute.SetBuffer(4, "_StaticVoxels", staticVoxelsBuffer);
 
         // Debug instancing args
         argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
@@ -158,22 +160,16 @@ public class Voxelizer : MonoBehaviour {
             radius += growthSpeed * Time.deltaTime;
         }
 
-        if (debugStaticVoxels) {
-            debugVoxelMaterial.SetBuffer("_Voxels", staticVoxelsBuffer);
+        if (debugStaticVoxels || debugSmokeVoxels || debugEdgeVoxels) {
+            debugVoxelMaterial.SetBuffer("_StaticVoxels", staticVoxelsBuffer);
+            debugVoxelMaterial.SetBuffer("_SmokeVoxels", smokeVoxelsBuffer);
             debugVoxelMaterial.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
             debugVoxelMaterial.SetVector("_BoundsExtent", boundsExtent);
             debugVoxelMaterial.SetFloat("_VoxelSize", voxelSize);
             debugVoxelMaterial.SetInt("_MaxFillSteps", maxFillSteps);
-
-            Graphics.DrawMeshInstancedIndirect(debugMesh, 0, debugVoxelMaterial, debugBounds, argsBuffer);
-        }
-
-        if (debugSmokeVoxels) {
-            debugVoxelMaterial.SetBuffer("_Voxels", smokeVoxelsBuffer);
-            debugVoxelMaterial.SetVector("_VoxelResolution", new Vector3(voxelsX, voxelsY, voxelsZ));
-            debugVoxelMaterial.SetVector("_BoundsExtent", boundsExtent);
-            debugVoxelMaterial.SetFloat("_VoxelSize", voxelSize);
-            debugVoxelMaterial.SetInt("_MaxFillSteps", maxFillSteps);
+            debugVoxelMaterial.SetInt("_DebugSmokeVoxels", debugSmokeVoxels ? 1 : 0);
+            debugVoxelMaterial.SetInt("_DebugStaticVoxels", debugStaticVoxels ? 1 : 0);
+            debugVoxelMaterial.SetInt("_DebugEdgeVoxels", debugEdgeVoxels ? 1 : 0);
 
             Graphics.DrawMeshInstancedIndirect(debugMesh, 0, debugVoxelMaterial, debugBounds, argsBuffer);
         }

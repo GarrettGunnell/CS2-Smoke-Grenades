@@ -4,10 +4,10 @@
 #pragma kernel CS_FillStep
 #pragma kernel CS_PingPong
 
-RWStructuredBuffer<int> _Voxels;
-RWStructuredBuffer<int> _SmokeVoxels;
+RWStructuredBuffer<int2> _Voxels;
+RWStructuredBuffer<int2> _SmokeVoxels;
 RWStructuredBuffer<int> _StaticVoxels;
-RWStructuredBuffer<int> _PingVoxels;
+RWStructuredBuffer<int2> _PingVoxels;
 
 StructuredBuffer<float3> _MeshVertices;
 StructuredBuffer<int> _MeshTriangleIndices;
@@ -154,11 +154,11 @@ void CS_Seed(uint id : SV_DISPATCHTHREADID) {
 void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
     [branch]
     if (0 <= id.x && id.x < _VoxelCount) {
-        int voxel = _SmokeVoxels[id.x];
+        int2 voxel = _SmokeVoxels[id.x];
         int staticVoxel = _StaticVoxels[id.x];
 
         // Already filled in
-        if (voxel > 0) {
+        if (voxel.x > 0) {
             _PingVoxels[id.x] = voxel;
             return;
         }
@@ -177,7 +177,6 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
         float3 centerPos = pos * _VoxelSize + halfVoxelSize - float3(_BoundsExtent.x, 0, _BoundsExtent.z) - _SmokeOrigin;
 
         float3 q = abs(centerPos) - _Radius.xyz;
-
         float insideBox = length(max(q, 0.0f)) + min(max(q.x, max(q.y, q.z)), 0.0f) - _Radius.w;
 
         // Outside radius
@@ -188,27 +187,27 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
 
         int up = 0;
         if (voxelPos.y + 1 < _VoxelResolution.y)
-            up = _SmokeVoxels[to1D(voxelPos + int3(0, 1, 0))];
+            up = _SmokeVoxels[to1D(voxelPos + int3(0, 1, 0))].x;
         
         int down = 0;
         if (voxelPos.y - 1 >= 0)
-            down = _SmokeVoxels[to1D(voxelPos + int3(0, -1, 0))];
+            down = _SmokeVoxels[to1D(voxelPos + int3(0, -1, 0))].x;
 
         int left = 0;
         if (voxelPos.x + 1 < _VoxelResolution.x)
-            left = _SmokeVoxels[to1D(voxelPos + int3(1, 0, 0))];
+            left = _SmokeVoxels[to1D(voxelPos + int3(1, 0, 0))].x;
 
         int right = 0;
         if (voxelPos.x - 1 >= 0)
-            right = _SmokeVoxels[to1D(voxelPos + int3(-1, 0, 0))];
+            right = _SmokeVoxels[to1D(voxelPos + int3(-1, 0, 0))].x;
 
         int backward = 0;
         if (voxelPos.z + 1 < _VoxelResolution.z)
-            backward = _SmokeVoxels[to1D(voxelPos + int3(0, 0, 1))];
+            backward = _SmokeVoxels[to1D(voxelPos + int3(0, 0, 1))].x;
 
         int forward = 0;
         if (voxelPos.z - 1 >= 0)
-            forward = _SmokeVoxels[to1D(voxelPos + int3(0, 0, -1))];
+            forward = _SmokeVoxels[to1D(voxelPos + int3(0, 0, -1))].x;
 
         int distance = max(up, max(down, max(left, max(right, max(forward, backward)))));
 
@@ -218,5 +217,47 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
 
 [numthreads(128, 1, 1)]
 void CS_PingPong(uint id : SV_DISPATCHTHREADID) {
-    _Voxels[id.x] = _PingVoxels[id.x];
+    [branch]
+    if (0 <= id.x && id.x < _VoxelCount) {        
+        int2 voxel = int2(_PingVoxels[id.x].x, 0);
+        int staticVoxel = _StaticVoxels[id.x];
+
+        [branch]
+        if (voxel.x == 0 && staticVoxel == 0) {
+            _Voxels[id.x] = voxel;
+            return;
+        }
+
+        int3 voxelPos = to3D(id.x);
+
+        int up = 0;
+        if (voxelPos.y + 1 < _VoxelResolution.y)
+            up = saturate(_PingVoxels[to1D(voxelPos + int3(0, 1, 0))].x);
+        
+        int down = 0;
+        if (voxelPos.y - 1 >= 0)
+            down = saturate(_PingVoxels[to1D(voxelPos + int3(0, -1, 0))].x);
+
+        int left = 0;
+        if (voxelPos.x + 1 < _VoxelResolution.x)
+            left = saturate(_PingVoxels[to1D(voxelPos + int3(1, 0, 0))].x);
+
+        int right = 0;
+        if (voxelPos.x - 1 >= 0)
+            right = saturate(_PingVoxels[to1D(voxelPos + int3(-1, 0, 0))].x);
+
+        int backward = 0;
+        if (voxelPos.z + 1 < _VoxelResolution.z)
+            backward = saturate(_PingVoxels[to1D(voxelPos + int3(0, 0, 1))].x);
+
+        int forward = 0;
+        if (voxelPos.z - 1 >= 0)
+            forward = saturate(_PingVoxels[to1D(voxelPos + int3(0, 0, -1))].x);
+        
+        int neighborSum = up + down + left + right + backward + forward;
+
+        if (0 < neighborSum && neighborSum < 6) voxel.y = 1;
+
+        _Voxels[id.x] = voxel;
+    }
 }
