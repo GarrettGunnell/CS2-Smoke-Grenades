@@ -159,7 +159,7 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
     if (d < MAX_DISTANCE) {
         float3 pos = origin + direction * d;
 
-        if ((all(pos > -1) && all(pos < 1)) || _DebugTiledNoise) {
+        if ((all(pos > 0) && all(pos < 1)) || _DebugTiledNoise) {
             if (_DebugAxis == 0) pos.x = (_DebugNoiseSlice - 1) / _NoiseRes.x;
             if (_DebugAxis == 1) pos.y = (_DebugNoiseSlice - 1) / _NoiseRes.y;
             if (_DebugAxis == 2) pos.z = (_DebugNoiseSlice - 1) / _NoiseRes.z;
