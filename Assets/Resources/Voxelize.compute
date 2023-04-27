@@ -182,31 +182,26 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
             return;
         }
 
-        int up = 0;
-        if (voxelPos.y + 1 < _VoxelResolution.y)
-            up = _SmokeVoxels[to1D(voxelPos + int3(0, 1, 0))].x;
-        
-        int down = 0;
-        if (voxelPos.y - 1 >= 0)
-            down = _SmokeVoxels[to1D(voxelPos + int3(0, -1, 0))].x;
+        int distance = 0;
+        float total = voxel.x;
+        for (int x = -1; x <= 1; ++x) {
+            for (int y = -1; y <= 1; ++y) {
+                for (int z = -1; z <= 1; ++z) {
+                    int3 offset = int3(x, y, z);
+                    if (all(offset == 0)) continue;
 
-        int left = 0;
-        if (voxelPos.x + 1 < _VoxelResolution.x)
-            left = _SmokeVoxels[to1D(voxelPos + int3(1, 0, 0))].x;
+                    int3 samplePos = voxelPos + offset;
+                    if (any(samplePos < 0) || any(_VoxelResolution < samplePos)) continue;
 
-        int right = 0;
-        if (voxelPos.x - 1 >= 0)
-            right = _SmokeVoxels[to1D(voxelPos + int3(-1, 0, 0))].x;
+                    int idx = to1D(samplePos);
+                    int v = _SmokeVoxels[idx].x;
+                    if (length(offset) > 1) v = sqrt(v);
+                    distance = max(distance, v);
+                    total += v;
+                }
+            }
+        }
 
-        int backward = 0;
-        if (voxelPos.z + 1 < _VoxelResolution.z)
-            backward = _SmokeVoxels[to1D(voxelPos + int3(0, 0, 1))].x;
-
-        int forward = 0;
-        if (voxelPos.z - 1 >= 0)
-            forward = _SmokeVoxels[to1D(voxelPos + int3(0, 0, -1))].x;
-
-        int distance = max(up, max(down, max(left, max(right, max(forward, backward)))));
 
         _PingVoxels[id.x] = max(0, distance - 1);
     }
