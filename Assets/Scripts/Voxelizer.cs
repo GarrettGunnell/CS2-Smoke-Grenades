@@ -110,8 +110,8 @@ public class Voxelizer : MonoBehaviour {
             trianglesBuffer.Release();
         }
 
-        smokeVoxelsBuffer = new ComputeBuffer(totalVoxels, sizeof(int) * 2);
-        smokePingVoxelsBuffer = new ComputeBuffer(totalVoxels, sizeof(int) * 2);
+        smokeVoxelsBuffer = new ComputeBuffer(totalVoxels, sizeof(int));
+        smokePingVoxelsBuffer = new ComputeBuffer(totalVoxels, sizeof(int));
         
         // Clear buffers
         voxelizeCompute.SetBuffer(0, "_Voxels", smokeVoxelsBuffer);
@@ -180,7 +180,6 @@ public class Voxelizer : MonoBehaviour {
             debugVoxelMaterial.SetInt("_MaxFillSteps", maxFillSteps);
             debugVoxelMaterial.SetInt("_DebugSmokeVoxels", debugSmokeVoxels ? 1 : 0);
             debugVoxelMaterial.SetInt("_DebugStaticVoxels", debugStaticVoxels ? 1 : 0);
-            debugVoxelMaterial.SetInt("_DebugEdgeVoxels", debugEdgeVoxels ? 1 : 0);
 
             Graphics.DrawMeshInstancedIndirect(debugMesh, 0, debugVoxelMaterial, debugBounds, argsBuffer);
         }

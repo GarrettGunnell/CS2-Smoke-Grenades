@@ -1254,7 +1254,7 @@ MonoBehaviour:
   debugEdgeVoxels: 0
   maxRadius: {x: 5, y: 4, z: 5}
   growthSpeed: 2
-  maxFillSteps: 12
+  maxFillSteps: 16
   iterateFill: 0
   constantFill: 1
 --- !u!4 &1766898646

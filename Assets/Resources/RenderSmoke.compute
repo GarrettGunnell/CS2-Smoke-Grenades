@@ -9,7 +9,7 @@
 #define MAX_DISTANCE 1000
 #define PI 3.1415926538
 
-RWStructuredBuffer<int2> _SmokeVoxels;
+RWStructuredBuffer<int> _SmokeVoxels;
 float3 _BoundsExtent;
 float3 _VoxelResolution;
 
@@ -286,7 +286,7 @@ uint to1D(uint3 pos) {
 }
 
 float getDensity(float3 pos) {
-    int2 v = 0;
+    int v = 0;
     float n = 0.0f;
     float falloff = 0.0f;
 

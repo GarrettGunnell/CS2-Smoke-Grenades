@@ -12,7 +12,7 @@ Shader "Hidden/VisualizeVoxels" {
 			#include "UnityPBSLighting.cginc"
             #include "AutoLight.cginc"
 
-            StructuredBuffer<int2> _SmokeVoxels;
+            StructuredBuffer<int> _SmokeVoxels;
             StructuredBuffer<int> _StaticVoxels;
             float3 _BoundsExtent;
             uint3 _VoxelResolution;
@@ -28,7 +28,6 @@ Shader "Hidden/VisualizeVoxels" {
 				float4 pos : SV_POSITION;
                 float3 hashCol : TEXCOORD0;
 				float3 normal : TEXCOORD1;
-                int edge : TEXCOORD2;
 			};
 
             float hash(uint n) {
@@ -49,9 +48,7 @@ Shader "Hidden/VisualizeVoxels" {
 				i.pos = UnityObjectToClipPos((v.vertex + float3(x, y, z)) * _VoxelSize + (_VoxelSize * 0.5f) - _BoundsExtent);
 
 				if (_DebugSmokeVoxels)
-					i.pos *= saturate(_SmokeVoxels[instanceID].x);
-				if (_DebugEdgeVoxels)
-					i.pos *= _SmokeVoxels[instanceID].y;
+					i.pos *= saturate(_SmokeVoxels[instanceID]);
 				if (_DebugStaticVoxels)
 					i.pos *= _StaticVoxels[instanceID];
 				

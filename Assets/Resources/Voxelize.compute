@@ -4,10 +4,10 @@
 #pragma kernel CS_FillStep
 #pragma kernel CS_PingPong
 
-RWStructuredBuffer<int2> _Voxels;
-RWStructuredBuffer<int2> _SmokeVoxels;
+RWStructuredBuffer<int> _Voxels;
+RWStructuredBuffer<int> _SmokeVoxels;
 RWStructuredBuffer<int> _StaticVoxels;
-RWStructuredBuffer<int2> _PingVoxels;
+RWStructuredBuffer<int> _PingVoxels;
 
 StructuredBuffer<float3> _MeshVertices;
 StructuredBuffer<int> _MeshTriangleIndices;
@@ -154,7 +154,7 @@ void CS_Seed(uint id : SV_DISPATCHTHREADID) {
 void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
     [branch]
     if (0 <= id.x && id.x < _VoxelCount) {
-        int2 voxel = _SmokeVoxels[id.x];
+        int voxel = _SmokeVoxels[id.x];
         int staticVoxel = _StaticVoxels[id.x];
 
         // Already filled in
@@ -209,46 +209,5 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
 
 [numthreads(128, 1, 1)]
 void CS_PingPong(uint id : SV_DISPATCHTHREADID) {
-    [branch]
-    if (0 <= id.x && id.x < _VoxelCount) {        
-        int2 voxel = int2(_PingVoxels[id.x].x, 0);
-        int staticVoxel = _StaticVoxels[id.x];
-
-        [branch]
-        if (voxel.x == 0 && staticVoxel == 0) {
-            _Voxels[id.x] = voxel;
-            return;
-        }
-
-        int3 voxelPos = to3D(id.x);
-
-        int neighborSum = 0;
-        int staticSum = 0;
-        int totalSamples = 0;
-
-        for (int x = -1; x <= 1; ++x) {
-            for (int y = -1; y <= 1; ++y) {
-                for (int z = -1; z <= 1; ++z) {
-                    int3 offset = int3(x, y, z);
-                    if (all(offset == 0)) continue;
-
-                    int3 samplePos = voxelPos + offset;
-                    if (any(samplePos < 0) || any(_VoxelResolution < samplePos)) continue;
-
-                    int idx = to1D(samplePos);
-                    neighborSum += saturate(_PingVoxels[idx].x);
-                    staticSum += _StaticVoxels[idx];
-
-                    ++totalSamples;
-                }
-            }
-        }
-
-        int totalSum = neighborSum + staticSum;
-
-        if (staticVoxel) voxel.y = neighborSum > 0 ? 1 : 0;
-        else if (0 < totalSum && totalSum < totalSamples) voxel.y = 1;
-
-        _Voxels[id.x] = voxel;
-    }
+    _Voxels[id.x] = _PingVoxels[id.x];
 }
