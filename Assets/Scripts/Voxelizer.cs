@@ -35,6 +35,7 @@ public class Voxelizer : MonoBehaviour {
     private Bounds debugBounds;
     private int voxelsX, voxelsY, voxelsZ, totalVoxels;
     private float radius;
+    private Vector3 smokeOrigin;
 
     public ComputeBuffer GetSmokeVoxelBuffer() {
         return smokeVoxelsBuffer;
@@ -50,6 +51,14 @@ public class Voxelizer : MonoBehaviour {
 
     public float GetVoxelSize() {
         return voxelSize;
+    }
+
+    public Vector3 GetSmokeOrigin() {
+        return smokeOrigin;
+    }
+
+    public Vector3 GetSmokeRadius() {
+        return Vector3.Lerp(Vector3.zero, maxRadius, Easing(radius));
     }
 
     void OnEnable() {
@@ -140,7 +149,8 @@ public class Voxelizer : MonoBehaviour {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
             if (Physics.Raycast(ray, out hit, 50)) {
-                voxelizeCompute.SetVector("_SmokeOrigin", hit.point);
+                smokeOrigin = hit.point;
+                voxelizeCompute.SetVector("_SmokeOrigin", smokeOrigin);
                 
                 radius = 0;
                 voxelizeCompute.SetBuffer(0, "_Voxels", smokeVoxelsBuffer);

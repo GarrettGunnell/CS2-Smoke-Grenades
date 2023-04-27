@@ -36,8 +36,9 @@ float _FrameTime;
 int _DownscaleFactor;
 
 uint _Shape;
-float _Radius;
+float3 _Radius;
 float4 _CubeParams;
+float3 _SmokeOrigin;
 
 int _StepCount;
 int _LightStepCount;
@@ -191,20 +192,6 @@ bool solveQuadratic(float a, float b, float c, inout float t0, inout float t1) {
     return true;
 }
 
-float3 GetSphereHit(float3 rayOrigin, float3 rayDir) {
-    float3 center = _CubeParams.xyz;
-    float3 L = rayOrigin - center;
-
-    float a = 1;
-    float b = 2 * dot(L, rayDir);
-    float c = dot(L, L) - _Radius * _Radius;
-
-    float t0, t1;
-    if (!solveQuadratic(a, b, c, t0, t1)) return 0;
-
-    return float3(t0, t1, 1);
-}
-
 float3 GetCubeHit(float3 rayOrigin, float3 rayDir) {
     float3 minB = _CubeParams.xyz - _CubeParams.w;
     float3 maxB = _CubeParams.xyz + _CubeParams.w;
@@ -259,7 +246,6 @@ float3 GetCubeHit(float3 rayOrigin, float3 rayDir) {
 float3 RaycastSmokeMesh(float3 rayOrigin, float3 rayDir) {
     float3 hit = 0;
 
-    if (_Shape == 0) hit = GetSphereHit(rayOrigin, rayDir);
     if (_Shape == 1) hit = GetCubeHit(rayOrigin, rayDir);
 
     return hit;
@@ -300,31 +286,41 @@ uint to1D(uint3 pos) {
 }
 
 float getDensity(float3 pos) {
-    float3 uvw = pos / _SmokeSize;
-    uvw += _AnimationDirection * _FrameTime;
-    float3 vp = pos - _CubeParams.xyz;
-    float dist = min(1.0f, dot(vp, vp) / (_Radius * _Radius));
-    float falloff = smoothstep(_DensityFalloff, 1.0f, dist);
-
-    float n = _NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r * 1.5;
-
     int2 v = 0;
+    float n = 0.0f;
+    float falloff = 0.0f;
 
     if (abs(dot(pos, float3(1, 0, 0))) <= _BoundsExtent.x &&
         abs(dot(pos, float3(0, 1, 0))) <= _BoundsExtent.y * 2 &&
         abs(dot(pos, float3(0, 0, 1))) <= _BoundsExtent.z)
     {
+        float3 uvw = pos / _SmokeSize;
+        uvw += _AnimationDirection * _FrameTime;
+        float3 vp = pos - _SmokeOrigin;
+        float3 radius = _Radius;
+
         float3 seedPos = pos;
         seedPos.xz += _BoundsExtent.xz;
         seedPos /= _BoundsExtent * 2;
         seedPos *= _VoxelResolution;
-        //seedPos = round(seedPos);
 
-        v = saturate(_SmokeVoxels[to1D(seedPos)]);
+        v = _SmokeVoxels[to1D(seedPos)];
+        
+        n = _NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r;
+
+
+        float dist = min(1.0f, length(vp / radius));
+        float voxelDist = 1 - (float)v.x / 17.0f;
+        voxelDist = voxelDist * voxelDist * voxelDist - n * 0.2f;
+
+        dist = smoothstep(_DensityFalloff, 1.0f, dist);
+
+        falloff = min(1.0f, dist + n);
     }
 
-    //return (0.5f - dist * 0.5f) + n * (1 - falloff);
-    return saturate(((v.x - v.y) + v.y * n) * (1 - falloff));
+    float voxelDensity = saturate(v.x);
+
+    return saturate(voxelDensity * (1 - falloff));
 }
 
 [numthreads(8,8,1)]

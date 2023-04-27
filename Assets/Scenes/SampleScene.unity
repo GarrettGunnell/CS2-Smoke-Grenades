@@ -918,7 +918,7 @@ MonoBehaviour:
   ambientDensity: 1
   phaseFunction: 1
   scatteringAnisotropy: 0
-  densityFalloff: 0
+  densityFalloff: 0.2
   animationDirection: {x: 0, y: -0.1, z: 0}
   bicubicUpscale: 1
   sharpness: 0
@@ -1251,7 +1251,8 @@ MonoBehaviour:
   debugMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   debugStaticVoxels: 0
   debugSmokeVoxels: 0
-  maxRadius: {x: 1.8, y: 1, z: 1.8, w: 3}
+  debugEdgeVoxels: 0
+  maxRadius: {x: 5, y: 4, z: 5}
   growthSpeed: 2
   maxFillSteps: 16
   iterateFill: 0

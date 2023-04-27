@@ -344,6 +344,8 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetVector("_SmokeColor", smokeColor);
         raymarchCompute.SetVector("_ExtinctionColor", extinctionColor);
         raymarchCompute.SetVector("_AmbientColor", ambientColor);
+        raymarchCompute.SetVector("_Radius", smokeVoxelData.GetSmokeRadius());
+        raymarchCompute.SetVector("_SmokeOrigin", smokeVoxelData.GetSmokeOrigin());
 
         if (debugNoise) {
             raymarchCompute.SetTexture(debugNoisePass, "_NoiseTex", noiseTex);
