@@ -6,7 +6,7 @@
 
 #define STEPS 256
 #define MIN_HIT_DISTANCE 0.001
-#define MAX_DISTANCE 1000
+#define MAX_DISTANCE 200
 #define PI 3.1415926538
 
 RWStructuredBuffer<int> _SmokeVoxels;
@@ -372,14 +372,14 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     float sceneIntersectDistance = -((origin - sceneWorldPos) / rayDir).x;
     
     while (v == 0 && distanceTraveled < MAX_DISTANCE) {
-        distanceTraveled += 0.5;
+        distanceTraveled += 0.45;
         samplePos = origin + distanceTraveled * rayDir;
         v = getVoxel(samplePos);
     }
 
     if (v) {
         // go one step back to avoid missing details
-        distanceTraveled -= 0.5f;
+        distanceTraveled -= 0.45f;
         float thickness = 0.0f;
 
         col = _SmokeColor;

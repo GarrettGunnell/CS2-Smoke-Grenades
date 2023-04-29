@@ -150,6 +150,15 @@ void CS_Seed(uint id : SV_DISPATCHTHREADID) {
     _SmokeVoxels[to1D(seedPos)] = _MaxFillSteps;
 }
 
+static int3 offsets[] = {
+    int3(1, 0, 0),
+    int3(-1, 0, 0),
+    int3(0, 1, 0),
+    int3(0, -1, 0),
+    int3(0, 0, 1),
+    int3(0, 0, -1)
+};
+
 [numthreads(128, 1, 1)]
 void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
     [branch]
@@ -160,12 +169,6 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
         // Already filled in
         if (voxel.x > 0) {
             _PingVoxels[id.x] = voxel;
-            return;
-        }
-
-        // Voxel is occupied by static geometry
-        if (staticVoxel > 0) {
-            _PingVoxels[id.x] = 0;
             return;
         }
 
@@ -183,23 +186,18 @@ void CS_FillStep(uint id : SV_DISPATCHTHREADID) {
         }
 
         int distance = 0;
-        float total = voxel.x;
-        for (int x = -1; x <= 1; ++x) {
-            for (int y = -1; y <= 1; ++y) {
-                for (int z = -1; z <= 1; ++z) {
-                    int3 offset = int3(x, y, z);
-                    if (all(offset == 0)) continue;
 
-                    int3 samplePos = voxelPos + offset;
-                    if (any(samplePos < 0) || any(_VoxelResolution < samplePos)) continue;
+        for (int offset = 0; offset < 6; ++offset) {
+            int3 samplePos = voxelPos + offsets[offset];
+            if (any(samplePos < 0) || any(_VoxelResolution < samplePos)) continue;
 
-                    int idx = to1D(samplePos);
-                    int v = _SmokeVoxels[idx].x;
-                    if (length(offset) > 1) v = sqrt(v);
-                    distance = max(distance, v);
-                    total += v;
-                }
-            }
+            int idx = to1D(samplePos);
+            int v = _SmokeVoxels[idx].x;
+            distance = max(distance, v);
+        }
+
+        if (staticVoxel && distance > 1) {
+            distance = 2;
         }
 
 

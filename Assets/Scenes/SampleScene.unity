@@ -441,8 +441,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 439661065}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5, y: 1.75, z: 0}
-  m_LocalScale: {x: 0.99, y: 3.49, z: 5.99}
+  m_LocalPosition: {x: 5.25, y: 1.75, z: 0}
+  m_LocalScale: {x: 1.49, y: 3.49, z: 5.99}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 872887907}
@@ -886,14 +886,14 @@ MonoBehaviour:
   cellSize: 32
   axisCellCount: 4
   frequency: 2
-  amplitude: 1
+  amplitude: 0.62
   persistance: 0.515
   roughness: 3
   warp: 0.76
   add: 0
   period: 32
   absMode: 0
-  invertNoise: 0
+  invertNoise: 1
   updateNoise: 0
   debugNoise: 0
   debugTiledNoise: 0
