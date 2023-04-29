@@ -61,6 +61,10 @@ public class Voxelizer : MonoBehaviour {
         return Vector3.Lerp(Vector3.zero, maxRadius, Easing(radius));
     }
 
+    public float GetEasing() {
+        return Easing(radius);
+    }
+
     void OnEnable() {
         radius = 0.0f;
         debugVoxelMaterial = new Material(Shader.Find("Hidden/VisualizeVoxels"));

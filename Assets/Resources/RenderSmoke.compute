@@ -34,6 +34,7 @@ float4x4 _CameraInvViewProjection;
 int _BufferWidth, _BufferHeight;
 float _FrameTime;
 int _DownscaleFactor;
+float _Easing;
 
 uint _Shape;
 float3 _Radius;
@@ -118,8 +119,9 @@ void CS_GenerateNoise(uint3 id : SV_DISPATCHTHREADID) {
     }
 
     n += _Add;
+    n = saturate(n) * _Amplitude;
     
-    _RWNoiseTex[id.xyz] = _InvertNoise ? 1 - saturate(n) : saturate(n);
+    _RWNoiseTex[id.xyz] = _InvertNoise ? _Amplitude - n : n;
 }
 
 uint _DebugNoiseSlice;
@@ -285,19 +287,40 @@ uint to1D(uint3 pos) {
     return pos.x + pos.y * _VoxelResolution.x + pos.z * _VoxelResolution.x * _VoxelResolution.y;
 }
 
-float getDensity(float3 pos) {
+int getVoxel(float3 pos) {
     int v = 0;
-    float n = 0.0f;
-    float falloff = 0.0f;
 
     if (abs(dot(pos, float3(1, 0, 0))) <= _BoundsExtent.x &&
         abs(dot(pos, float3(0, 1, 0))) <= _BoundsExtent.y * 2 &&
         abs(dot(pos, float3(0, 0, 1))) <= _BoundsExtent.z)
     {
+        float3 seedPos = pos;
+        seedPos.xz += _BoundsExtent.xz;
+        seedPos /= _BoundsExtent * 2;
+        seedPos *= _VoxelResolution;
+
+        v = _SmokeVoxels[to1D(seedPos)];
+    }
+
+    return v;
+}
+
+float getDensity(float3 pos) {
+    int v = 0;
+    float n = 0.0f;
+    float falloff = 0.0f;
+    float heightMod = 0.0f;
+    pos.y -= _BoundsExtent.y;
+
+    if (abs(dot(pos, float3(1, 0, 0))) <= _BoundsExtent.x &&
+        abs(dot(pos, float3(0, 1, 0))) <= _BoundsExtent.y &&
+        abs(dot(pos, float3(0, 0, 1))) <= _BoundsExtent.z)
+    {
+        pos.y += _BoundsExtent.y;
         float3 uvw = pos / _SmokeSize;
         uvw += _AnimationDirection * _FrameTime;
         float3 vp = pos - _SmokeOrigin;
-        float3 radius = _Radius;
+        float3 radius = _Radius - 0.1f;
 
         float3 seedPos = pos;
         seedPos.xz += _BoundsExtent.xz;
@@ -306,6 +329,8 @@ float getDensity(float3 pos) {
 
         v = _SmokeVoxels[to1D(seedPos)];
         
+        heightMod = 1 - (seedPos.y / _VoxelResolution.y);
+
         n = _NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r;
 
 
@@ -319,8 +344,7 @@ float getDensity(float3 pos) {
     }
 
     float voxelDensity = saturate(v.x);
-
-    return saturate(voxelDensity * (1 - falloff));
+    return saturate(voxelDensity * (1 - falloff) * heightMod);
 }
 
 [numthreads(8,8,1)]
@@ -336,20 +360,27 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     rayDir = mul(_CameraToWorld, float4(rayDir, 0.0f)).xyz;
     rayDir = normalize(rayDir);
 
-    // Intersect with smoke mesh
-    float3 hit = RaycastSmokeMesh(origin, rayDir);
-    float3 hitPos = origin + hit.x * rayDir;
 
     float3 col = 0.0f;
     float alpha = 1.0f;
 
-    // Solve for t in: P = O + tD
-    float sceneIntersectDistance = -((origin - sceneWorldPos) / rayDir).x;
+    float distanceTraveled = 0;
+    float3 samplePos = origin + distanceTraveled * rayDir;
+    float v = getVoxel(samplePos);
 
-    [branch]
-    if (hit.z && (hit.x < sceneIntersectDistance) && hit.x > 0) {
-        float t1 = hit.x;
-        float t2 = min(hit.y, sceneIntersectDistance);
+    // Solve for t in P = O + tD for scene depth
+    float sceneIntersectDistance = -((origin - sceneWorldPos) / rayDir).x;
+    
+    while (v == 0 && distanceTraveled < MAX_DISTANCE) {
+        distanceTraveled += 0.5;
+        samplePos = origin + distanceTraveled * rayDir;
+        v = getVoxel(samplePos);
+    }
+
+    if (v) {
+        // go one step back to avoid missing details
+        distanceTraveled -= 0.5f;
+        float thickness = 0.0f;
 
         col = _SmokeColor;
         float extinctionCoefficient = _AbsorptionCoefficient + _ScatteringCoefficient;
@@ -358,45 +389,68 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         float p = phase(_G, cos_theta);
         float pl = Rayleigh(cos_theta);
 
-        float stepSize = (t2 - t1) / (float)_StepCount;
+        float stepSize = 0.05f;
+        float lStepSize = 0.25f;
+
         float baseDensity = _VolumeDensity * stepSize;
+        float shadowDensity = _ShadowDensity * lStepSize;
+        float accumDensity = 0.0f;
 
-        [loop]
-        for (int i = 0; i < _StepCount; ++i) {
-            float t = t1 + stepSize * (i + 0.5f);
+        int stepCount = 0;
+        int minSteps = 200;
+        while ((stepCount < minSteps) && distanceTraveled < sceneIntersectDistance) {
+            samplePos = origin + distanceTraveled * rayDir;
+            v = getDensity(samplePos);
+            float sampleDensity = v;
+            accumDensity += sampleDensity * baseDensity;
 
-            float3 samplePos = origin + t * rayDir;
-            float sampleDensity = getDensity(samplePos);
-
-            alpha *= exp(-baseDensity * sampleDensity * extinctionCoefficient);
-
-            float3 lightHit = RaycastSmokeMesh(samplePos, -_SunDirection);
-
-            [branch]
-            if (lightHit.z && lightHit.x <= 0 && sampleDensity > 0.0001) {
-                float lStepSize = lightHit.y / (float)_LightStepCount;
-                float shadowDensity = _ShadowDensity * lStepSize;
-
+            ++stepCount;
+            distanceTraveled += stepSize;
+            thickness += stepSize * sampleDensity;
+            if (v > 0.001f) {
                 float tau = 0.0f;
-
-                [loop]
-                for (int j = 0; j < _LightStepCount; ++j) {
-                    float tl = lStepSize * (j + 0.5f);
-                    float3 lSamplePos = samplePos - tl * _SunDirection;
-                    tau += getDensity(lSamplePos);
+                float3 lightPos = samplePos;
+                float transmittance = exp(-thickness * accumDensity * extinctionCoefficient);
+                int lStepCount = 0;
+                while (lStepCount < 8) {
+                    tau += v * lStepSize;
+                    lightPos -= lStepSize * _SunDirection;
+                    v = getDensity(lightPos);
+                    lStepCount++;
                 }
 
                 float3 lightAttenuation = exp(-(tau / _ExtinctionColor) * extinctionCoefficient * shadowDensity);
-                col += _LightColor * lightAttenuation * alpha * p * _ScatteringCoefficient * baseDensity * sampleDensity;
+                col += _LightColor * lightAttenuation * transmittance * p * _ScatteringCoefficient * baseDensity * sampleDensity;
 
-                //Compute AO
-                float aoTerm = getDensity(samplePos + float3(0.0f, 0.05f, 0.0f));
-                aoTerm += getDensity(samplePos + float3(0.0f, 0.1f, 0.0f));
-                aoTerm += getDensity(samplePos + float3(0.0f, 0.2f, 0.0f));
-
-                col += _AmbientColor * exp(-(aoTerm / _ExtinctionColor) * _AmbientDensity * extinctionCoefficient * 0.1f) * alpha * pl * _ScatteringCoefficient * baseDensity * sampleDensity;
+                if (transmittance <= 0.01f) break;
             }
         }
+
+        if (distanceTraveled > sceneIntersectDistance) {
+            samplePos -= (distanceTraveled - sceneIntersectDistance) * rayDir;
+            thickness -= distanceTraveled - sceneIntersectDistance;
+            
+            v = getDensity(samplePos);
+            float sampleDensity = v;
+            accumDensity += baseDensity * sampleDensity;
+            if (v > 0.001f) {
+                float tau = 0.0f;
+                float3 lightPos = samplePos;
+                float transmittance = exp(-thickness * accumDensity * extinctionCoefficient);
+                int lStepCount = 0;
+                while (lStepCount < 8) {
+                    tau += v * lStepSize;
+                    lightPos -= lStepSize * _SunDirection;
+                    v = getDensity(lightPos);
+                    lStepCount++;
+                }
+
+                float3 lightAttenuation = exp(-(tau / _ExtinctionColor) * extinctionCoefficient * shadowDensity);
+                col += _LightColor * lightAttenuation * transmittance * p * _ScatteringCoefficient * baseDensity * sampleDensity;
+            }
+        }
+
+        alpha = exp(-thickness * accumDensity * extinctionCoefficient);
     }
 
     _SmokeTex[id.xy] = float4(saturate(col), 1.0f);
