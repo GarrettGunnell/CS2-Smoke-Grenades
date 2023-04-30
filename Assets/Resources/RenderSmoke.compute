@@ -2,8 +2,6 @@
 #pragma kernel CS_DebugNoise
 #pragma kernel CS_RayMarchSmoke
 
-#include "Packages/jp.keijiro.noiseshader/Shader/ClassicNoise3D.hlsl"
-
 #define STEPS 256
 #define MIN_HIT_DISTANCE 0.001
 #define MAX_DISTANCE 200
@@ -33,10 +31,7 @@ float4x4 _CameraViewProjection;
 float4x4 _CameraInvViewProjection;
 int _BufferWidth, _BufferHeight;
 float _FrameTime;
-int _DownscaleFactor;
-float _Easing;
 
-uint _Shape;
 float3 _Radius;
 float4 _CubeParams;
 float3 _SmokeOrigin;
@@ -45,20 +40,19 @@ float3 _CameraForward;
 int _StepCount;
 int _LightStepCount;
 float _SmokeSize;
-float _VolumeDensity, _ShadowDensity, _AmbientDensity;
+float _VolumeDensity, _ShadowDensity;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
-float3 _SmokeColor, _ExtinctionColor, _AmbientColor;
+float3 _SmokeColor, _ExtinctionColor;
 float _G;
 float _DensityFalloff;
 int _PhaseFunction;
 
 float3 _AnimationDirection;
 
-StructuredBuffer<float3> _FeaturePoints;
 float3 _NoiseRes;
 int _Octaves;
-float _Persistance, _Amplitude, _Warp, _Add, _Roughness;
-int _CellSize, _AxisCellCount, _Period, _Frequency, _AbsMode, _InvertNoise, _Seed;
+float _Amplitude, _Warp, _Add;
+int _CellSize, _AxisCellCount, _InvertNoise, _Seed;
 
 float hash(uint n) {
     // integer hash copied from Hugo Elias
@@ -173,85 +167,6 @@ void CS_DebugNoise(uint3 id : SV_DISPATCHTHREADID) {
     }
 
     _SmokeTex[id.xy] = col;
-}
-
-bool solveQuadratic(float a, float b, float c, inout float t0, inout float t1) {
-    float discr = b * b - 4.0f * a * c;
-    if (discr < 0) return false;
-    else if (discr == 0) t0 = t1 = -0.5f * b / a;
-    else {
-        float q = (b > 0) ? -0.5f * (b + sqrt(discr)) : -0.5f * (b - sqrt(discr));
-
-        t0 = q / a;
-        t1 = c / q;
-    }
-
-    if (t0 > t1) {
-        float temp = t0;
-        t0 = t1;
-        t1 = temp;
-    }
-
-    return true;
-}
-
-float3 GetCubeHit(float3 rayOrigin, float3 rayDir) {
-    float3 minB = _CubeParams.xyz - _CubeParams.w;
-    float3 maxB = _CubeParams.xyz + _CubeParams.w;
-    float tmin = (minB.x - rayOrigin.x) / rayDir.x; 
-    float tmax = (maxB.x - rayOrigin.x) / rayDir.x; 
- 
-    if (tmin > tmax) {
-        float temp = tmin;
-        tmin = tmax;
-        tmax = temp;
-    }
- 
-    float tymin = (minB.y - rayOrigin.y) / rayDir.y; 
-    float tymax = (maxB.y - rayOrigin.y) / rayDir.y; 
- 
-    if (tymin > tymax) {
-        float temp = tymin;
-        tymin = tymax;
-        tymax = temp;
-    } 
- 
-    if ((tmin > tymax) || (tymin > tmax)) 
-        return 0; 
- 
-    if (tymin > tmin) 
-        tmin = tymin; 
- 
-    if (tymax < tmax) 
-        tmax = tymax; 
- 
-    float tzmin = (minB.z - rayOrigin.z) / rayDir.z; 
-    float tzmax = (maxB.z - rayOrigin.z) / rayDir.z; 
- 
-    if (tzmin > tzmax) {
-        float temp = tzmin;
-        tzmin = tzmax;
-        tzmax = temp;
-    }
- 
-    if ((tmin > tzmax) || (tzmin > tmax)) 
-        return 0; 
- 
-    if (tzmin > tmin) 
-        tmin = tzmin; 
- 
-    if (tzmax < tmax) 
-        tmax = tzmax; 
- 
-    return float3(tmin, tmax, 1); 
-}
-
-float3 RaycastSmokeMesh(float3 rayOrigin, float3 rayDir) {
-    float3 hit = 0;
-
-    if (_Shape == 1) hit = GetCubeHit(rayOrigin, rayDir);
-
-    return hit;
 }
 
 float3 ComputeWorldSpacePosition(float2 positionNDC, float deviceDepth) {
@@ -421,7 +336,6 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
         float cos_theta = dot(rayDir, -_SunDirection);
         float p = phase(_G, cos_theta);
-        float pl = Rayleigh(cos_theta);
 
         float stepSize = 0.05f;
         float lStepSize = 0.25f;
@@ -432,6 +346,8 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
         int stepCount = 0;
         int minSteps = 200;
+
+        float sceneIntersectDistance = -((origin - sceneWorldPos) / rayDir).x;
         while ((stepCount < minSteps) && distanceTraveled < sceneIntersectDistance) {
             samplePos = origin + distanceTraveled * rayDir;
             v = getDensity(samplePos);
