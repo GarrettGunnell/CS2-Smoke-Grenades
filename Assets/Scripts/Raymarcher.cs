@@ -69,11 +69,17 @@ public class Raymarcher : MonoBehaviour {
 
     public Color smokeColor;
 
-    [Range(1, 128)]
+    [Range(1, 256)]
     public int stepCount = 64;
+
+    [Range(0.01f, 0.1f)]
+    public float stepSize = 0.05f;
 
     [Range(1, 32)]
     public int lightStepCount = 8;
+
+    [Range(0.01f, 1.0f)]
+    public float lightStepSize = 0.25f;
 
     [Range(0.01f, 64.0f)]
     public float smokeSize = 32.0f;
@@ -269,7 +275,6 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetVector("_CameraWorldPos", this.transform.position);
         raymarchCompute.SetMatrix("_CameraToWorld", cam.cameraToWorldMatrix);
         raymarchCompute.SetMatrix("_CameraInvProjection", projMatrix.inverse);
-        raymarchCompute.SetMatrix("_CameraViewProjection", viewProjMatrix);
         raymarchCompute.SetMatrix("_CameraInvViewProjection", viewProjMatrix.inverse);
         raymarchCompute.SetInt("_BufferWidth", smokeTex.width);
         raymarchCompute.SetInt("_BufferHeight", smokeTex.height);
@@ -280,8 +285,8 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_AbsorptionCoefficient", absorptionCoefficient);
         raymarchCompute.SetFloat("_ScatteringCoefficient", scatteringCoefficient);
         raymarchCompute.SetFloat("_DensityFalloff", 1 - densityFalloff);
-        raymarchCompute.SetFloat("_VolumeDensity", volumeDensity);
-        raymarchCompute.SetFloat("_ShadowDensity", shadowDensity);
+        raymarchCompute.SetFloat("_VolumeDensity", volumeDensity * stepSize);
+        raymarchCompute.SetFloat("_ShadowDensity", shadowDensity * lightStepSize);
         raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetVector("_AnimationDirection", animationDirection);

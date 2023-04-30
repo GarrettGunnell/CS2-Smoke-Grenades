@@ -27,7 +27,6 @@ float3 _LightColor;
 float3 _SunDirection;
 float4x4 _CameraToWorld;
 float4x4 _CameraInvProjection;
-float4x4 _CameraViewProjection;
 float4x4 _CameraInvViewProjection;
 int _BufferWidth, _BufferHeight;
 float _FrameTime;
@@ -224,8 +223,6 @@ int getVoxel(float3 pos) {
 }
 
 float bulletHole(float3 pos, float n) {
-    // sampling independent computations (only depend on shape)
-
     float3 p = pos;
 
     float3 a = _CameraWorldPos;
@@ -339,20 +336,16 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
 
         float stepSize = 0.05f;
         float lStepSize = 0.25f;
-
-        float baseDensity = _VolumeDensity * stepSize;
-        float shadowDensity = _ShadowDensity * lStepSize;
         float accumDensity = 0.0f;
 
         int stepCount = 0;
-        int minSteps = 200;
-
+        // Main volumetric lighting pass
         float sceneIntersectDistance = -((origin - sceneWorldPos) / rayDir).x;
-        while ((stepCount < minSteps) && distanceTraveled < sceneIntersectDistance) {
+        while ((stepCount < _StepCount) && distanceTraveled < sceneIntersectDistance) {
             samplePos = origin + distanceTraveled * rayDir;
             v = getDensity(samplePos);
             float sampleDensity = v;
-            accumDensity += sampleDensity * baseDensity;
+            accumDensity += sampleDensity * _VolumeDensity;
 
             ++stepCount;
             distanceTraveled += stepSize;
@@ -363,47 +356,48 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 float3 lightPos = samplePos;
                 float alpha = exp(-thickness * accumDensity * extinctionCoefficient);
                 int lStepCount = 0;
-                while (lStepCount < 16) {
+                while (lStepCount < _LightStepCount) {
                     tau += v * lStepSize;
                     lightPos -= lStepSize * _SunDirection;
                     v = getDensity(lightPos);
                     lStepCount++;
                 }
 
-                float3 lightAttenuation = exp(-(tau / _ExtinctionColor) * extinctionCoefficient * shadowDensity);
-                col += _LightColor * lightAttenuation * alpha * p * _ScatteringCoefficient * baseDensity * sampleDensity;
-
-                if (alpha <= 0.01f) break;
+                float3 lightAttenuation = exp(-(tau / _ExtinctionColor) * extinctionCoefficient * _ShadowDensity);
+                col += _LightColor * lightAttenuation * alpha * p * _ScatteringCoefficient * _VolumeDensity * sampleDensity;
             }
+
+            if (alpha < 0.1f) break;
         }
 
+        // Halfway sample in the case of overshooting scene depth
         if (distanceTraveled > sceneIntersectDistance) {
             samplePos -= (distanceTraveled - sceneIntersectDistance) * rayDir;
             thickness -= distanceTraveled - sceneIntersectDistance;
             
             v = getDensity(samplePos);
             float sampleDensity = v;
-            accumDensity += baseDensity * sampleDensity;
+            accumDensity += _VolumeDensity * sampleDensity;
             if (v > 0.001f) {
                 float tau = 0.0f;
                 float3 lightPos = samplePos;
-                float transmittance = exp(-thickness * accumDensity * extinctionCoefficient);
+                alpha = exp(-thickness * accumDensity * extinctionCoefficient);
                 int lStepCount = 0;
-                while (lStepCount < 8) {
+                while (lStepCount < _LightStepCount) {
                     tau += v * lStepSize;
                     lightPos -= lStepSize * _SunDirection;
                     v = getDensity(lightPos);
                     lStepCount++;
                 }
 
-                float3 lightAttenuation = exp(-(tau / _ExtinctionColor) * extinctionCoefficient * shadowDensity);
-                col += _LightColor * lightAttenuation * transmittance * p * _ScatteringCoefficient * baseDensity * sampleDensity;
+                float3 lightAttenuation = exp(-(tau / _ExtinctionColor) * extinctionCoefficient * _ShadowDensity);
+                col += _LightColor * lightAttenuation * alpha * p * _ScatteringCoefficient * _VolumeDensity * sampleDensity;
             }
         }
 
         alpha = exp(-thickness * accumDensity * extinctionCoefficient);
 
-        if (alpha < 0.01f) alpha = 0;
+        if (alpha < 0.1f) alpha = 0;
     }
 
     _SmokeTex[id.xy] = float4(saturate(col), 1.0f);
