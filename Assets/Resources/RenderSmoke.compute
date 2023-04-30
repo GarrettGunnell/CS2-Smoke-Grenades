@@ -45,6 +45,7 @@ float3 _SmokeColor, _ExtinctionColor;
 float _G;
 float _DensityFalloff;
 int _PhaseFunction;
+float _AlphaThreshold;
 
 float3 _AnimationDirection;
 
@@ -367,7 +368,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 col += _LightColor * lightAttenuation * alpha * p * _ScatteringCoefficient * _VolumeDensity * sampleDensity;
             }
 
-            if (alpha < 0.1f) break;
+            if (alpha < _AlphaThreshold) break;
         }
 
         // Halfway sample in the case of overshooting scene depth
@@ -395,9 +396,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             }
         }
 
-        alpha = exp(-thickness * accumDensity * extinctionCoefficient);
-
-        if (alpha < 0.1f) alpha = 0;
+        if (alpha < _AlphaThreshold) alpha = 0;
     }
 
     _SmokeTex[id.xy] = float4(saturate(col), 1.0f);

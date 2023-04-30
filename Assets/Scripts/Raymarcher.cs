@@ -52,14 +52,8 @@ public class Raymarcher : MonoBehaviour {
     [Range(0, 128)]
     public int debugNoiseSlice = 0;
 
-    public enum Shape {
-        Sphere = 0,
-        Cube
-    } 
     [Header("SDF Settings")]
     [Space(5)]
-    public Shape sdfShape;
-
     public Vector4 cubeParams = new Vector4(0, 0, 0, 1);
 
     [Header("Smoke Settings")]
@@ -109,6 +103,9 @@ public class Raymarcher : MonoBehaviour {
     
     [Range(0.0f, 1.0f)]
     public float densityFalloff = 0.25f;
+
+    [Range(0.0f, 1.0f)]
+    public float alphaThreshold = 0.1f;
 
     [Header("Animation Settings")]
     [Space(5)]
@@ -290,7 +287,6 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetVector("_AnimationDirection", animationDirection);
-        raymarchCompute.SetInt("_Shape", (int)sdfShape);
         raymarchCompute.SetInt("_PhaseFunction", (int)phaseFunction);
         raymarchCompute.SetVector("_CubeParams", cubeParams);
         raymarchCompute.SetVector("_LightColor", lightColor);
@@ -298,7 +294,7 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetVector("_ExtinctionColor", extinctionColor);
         raymarchCompute.SetVector("_Radius", smokeVoxelData.GetSmokeRadius());
         raymarchCompute.SetVector("_SmokeOrigin", smokeVoxelData.GetSmokeOrigin());
-        raymarchCompute.SetFloat("_Easing", smokeVoxelData.GetEasing());
+        raymarchCompute.SetFloat("_AlphaThreshold", alphaThreshold);
 
         if (debugNoise) {
             raymarchCompute.SetTexture(debugNoisePass, "_NoiseTex", noiseTex);
