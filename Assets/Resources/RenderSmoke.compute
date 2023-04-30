@@ -355,7 +355,6 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             if (v > 0.001f) {
                 float tau = 0.0f;
                 float3 lightPos = samplePos;
-                float alpha = exp(-thickness * accumDensity * extinctionCoefficient);
                 int lStepCount = 0;
                 while (lStepCount < _LightStepCount) {
                     tau += v * lStepSize;
