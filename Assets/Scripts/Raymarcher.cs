@@ -263,6 +263,8 @@ public class Raymarcher : MonoBehaviour {
 
         Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(cam.projectionMatrix, false);
         Matrix4x4 viewProjMatrix = projMatrix * cam.worldToCameraMatrix;
+        raymarchCompute.SetVector("_CameraForward", cam.transform.forward);
+
 
         raymarchCompute.SetVector("_CameraWorldPos", this.transform.position);
         raymarchCompute.SetMatrix("_CameraToWorld", cam.cameraToWorldMatrix);
