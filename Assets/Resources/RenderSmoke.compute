@@ -289,11 +289,13 @@ uint to1D(uint3 pos) {
 
 int getVoxel(float3 pos) {
     int v = 0;
+    pos.y -= _BoundsExtent.y;
 
     if (abs(dot(pos, float3(1, 0, 0))) <= _BoundsExtent.x &&
-        abs(dot(pos, float3(0, 1, 0))) <= _BoundsExtent.y * 2 &&
+        abs(dot(pos, float3(0, 1, 0))) <= _BoundsExtent.y &&
         abs(dot(pos, float3(0, 0, 1))) <= _BoundsExtent.z)
     {
+        pos.y += _BoundsExtent.y;
         float3 seedPos = pos;
         seedPos.xz += _BoundsExtent.xz;
         seedPos /= _BoundsExtent * 2;
@@ -343,14 +345,14 @@ float getDensity(float3 pos) {
         falloff = min(1.0f, dist + n);
     }
 
-    float voxelDensity = saturate(v.x);
+    float voxelDensity = saturate(v);
     return saturate(voxelDensity * (1 - falloff) * heightMod);
 }
 
 [numthreads(8,8,1)]
 void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     float2 uv = (id.xy / float2(_BufferWidth, _BufferHeight));
-    float sceneDepth = _DepthTex.SampleLevel(point_repeat_sampler, uv, 0).r;
+    float sceneDepth = _DepthTex.SampleLevel(linear_repeat_sampler, uv, 0).r;
 
     float3 sceneWorldPos = ComputeWorldSpacePosition(uv, sceneDepth);
 

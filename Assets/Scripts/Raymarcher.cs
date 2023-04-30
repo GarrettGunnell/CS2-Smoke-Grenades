@@ -26,32 +26,14 @@ public class Raymarcher : MonoBehaviour {
     [Range(1, 64)]
     public int axisCellCount = 4;
 
-    [Range(1, 16)]
-    public int frequency = 1;
-
     [Range(0.1f, 16.0f)]
     public float amplitude = 1.0f;
-
-    [Range(0.01f, 1.0f)]
-    public float persistance = 1.0f;
-
-    [Range(0.01f, 10.0f)]
-    public float roughness = 2;
     
     [Range(0.0f, 5.0f)]
     public float warp = 0.0f;
 
     [Range(-5.0f, 5.0f)]
     public float add = 0.0f;
-    
-    [Range(0.01f, 100.0f)]
-    public int period = 64;
-
-    public enum AbsMode {
-        NoAbs = 0,
-        AbsWhileSumming,
-        AbsResult
-    } public AbsMode absMode;
 
     public bool invertNoise = false;
 
@@ -79,14 +61,6 @@ public class Raymarcher : MonoBehaviour {
     public Shape sdfShape;
 
     public Vector4 cubeParams = new Vector4(0, 0, 0, 1);
-
-    [Range(0.0f, 10.0f)]
-    public float maxRadius = 3.0f;
-
-    [Range(0.0f, 10.0f)]
-    public float growthSpeed = 1.0f;
-
-    public bool restartAnimation = false;
 
     [Header("Smoke Settings")]
     [Space(5)]
@@ -117,12 +91,6 @@ public class Raymarcher : MonoBehaviour {
 
     [Range(0.0f, 10.0f)]
     public float shadowDensity = 1.0f;
-
-    [ColorUsageAttribute(false, true)]
-    public Color ambientColor = new Color(1, 1, 1);
-
-    [Range(0.0f, 10.0f)]
-    public float ambientDensity = 1.0f;
 
     public enum PhaseFunction {
         HenyeyGreenstein = 0,
@@ -157,8 +125,6 @@ public class Raymarcher : MonoBehaviour {
     private GameObject sun;
     private Camera cam;
 
-    private float radius = 0.0f;
-
     private Material compositeMaterial;
     private ComputeShader raymarchCompute;
 
@@ -170,24 +136,15 @@ public class Raymarcher : MonoBehaviour {
 
     private ComputeBuffer smokeVoxelBuffer;
 
-    float Easing(float x) {
-        return Mathf.Sin((radius * Mathf.PI) / 2);
-    }
-
     void UpdateNoise() {
         raymarchCompute.SetTexture(generateNoisePass, "_RWNoiseTex", noiseTex);
         raymarchCompute.SetInt("_Octaves", octaves);
         raymarchCompute.SetInt("_CellSize", cellSize);
         raymarchCompute.SetInt("_AxisCellCount", axisCellCount);
-        raymarchCompute.SetFloat("_Persistance", persistance);
-        raymarchCompute.SetInt("_Frequency", frequency - 1);
         raymarchCompute.SetFloat("_Amplitude", amplitude);
         raymarchCompute.SetFloat("_Warp", warp);
         raymarchCompute.SetFloat("_Add", add);
-        raymarchCompute.SetFloat("_Roughness", roughness);
-        raymarchCompute.SetInt("_Period", period);
         raymarchCompute.SetInt("_InvertNoise", invertNoise ? 1 : 0);
-        raymarchCompute.SetInt("_AbsMode", (int)absMode);
         raymarchCompute.SetInt("_Seed", seed);
         raymarchCompute.SetVector("_NoiseRes", new Vector4(128, 128, 128, 0));
 
@@ -259,15 +216,6 @@ public class Raymarcher : MonoBehaviour {
     }
 
     void Update() {
-        if (radius < 1.0f) {
-            radius += growthSpeed * Time.deltaTime;
-        }
-
-        if (restartAnimation) {
-            radius = 0.0f;
-            restartAnimation = false;
-        }
-
         if (updateNoise) {
             UpdateNoise();
         }
@@ -332,18 +280,15 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_DensityFalloff", 1 - densityFalloff);
         raymarchCompute.SetFloat("_VolumeDensity", volumeDensity);
         raymarchCompute.SetFloat("_ShadowDensity", shadowDensity);
-        raymarchCompute.SetFloat("_AmbientDensity", ambientDensity * 10.0f);
         raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetVector("_AnimationDirection", animationDirection);
         raymarchCompute.SetInt("_Shape", (int)sdfShape);
         raymarchCompute.SetInt("_PhaseFunction", (int)phaseFunction);
-        raymarchCompute.SetFloat("_Radius", Mathf.Lerp(0.0f, maxRadius, Easing(radius)));
         raymarchCompute.SetVector("_CubeParams", cubeParams);
         raymarchCompute.SetVector("_LightColor", lightColor);
         raymarchCompute.SetVector("_SmokeColor", smokeColor);
         raymarchCompute.SetVector("_ExtinctionColor", extinctionColor);
-        raymarchCompute.SetVector("_AmbientColor", ambientColor);
         raymarchCompute.SetVector("_Radius", smokeVoxelData.GetSmokeRadius());
         raymarchCompute.SetVector("_SmokeOrigin", smokeVoxelData.GetSmokeOrigin());
         raymarchCompute.SetFloat("_Easing", smokeVoxelData.GetEasing());
