@@ -149,7 +149,7 @@ public class Voxelizer : MonoBehaviour {
 
     void Update() {
         voxelizeCompute.SetInt("_MaxFillSteps", maxFillSteps);
-        if (Input.GetMouseButtonDown(0)) {
+        if (Input.GetMouseButtonDown(2)) {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
             if (Physics.Raycast(ray, out hit, 50)) {

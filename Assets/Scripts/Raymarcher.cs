@@ -235,6 +235,8 @@ public class Raymarcher : MonoBehaviour {
             raymarchCompute.SetFloat("_R1", gun.GetRadius1());
             raymarchCompute.SetFloat("_R2", gun.GetRadius2());
             raymarchCompute.SetFloat("_BulletDepth", gun.GetDepth());
+            raymarchCompute.SetVector("_BulletForward", gun.GetBulletForward());
+            raymarchCompute.SetVector("_BulletOrigin", gun.GetBulletOrigin());
         }
     }
 

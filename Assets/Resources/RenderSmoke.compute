@@ -34,7 +34,8 @@ float _FrameTime;
 float3 _Radius;
 float4 _CubeParams;
 float3 _SmokeOrigin;
-float3 _CameraForward;
+float3 _BulletForward;
+float3 _BulletOrigin;
 float _R1, _R2, _BulletDepth;
 
 int _StepCount;
@@ -227,8 +228,8 @@ int getVoxel(float3 pos) {
 float bulletHole(float3 pos, float n) {
     float3 p = pos;
 
-    float3 a = _CameraWorldPos;
-    float3 b = a + _BulletDepth * _CameraForward;
+    float3 a = _BulletOrigin;
+    float3 b = a + _BulletDepth * _BulletForward;
 
     float r1 = _R1;
     float r2 = _R2;
