@@ -35,6 +35,7 @@ float3 _Radius;
 float4 _CubeParams;
 float3 _SmokeOrigin;
 float3 _CameraForward;
+float _R1, _R2, _BulletDepth;
 
 int _StepCount;
 int _LightStepCount;
@@ -227,10 +228,10 @@ float bulletHole(float3 pos, float n) {
     float3 p = pos;
 
     float3 a = _CameraWorldPos;
-    float3 b = a + 30.0f * _CameraForward;
+    float3 b = a + _BulletDepth * _CameraForward;
 
-    float r1 = 0;
-    float r2 = _CubeParams.w;
+    float r1 = _R1;
+    float r2 = _R2;
 
     float3 ba = b - a;
     float l2 = dot(ba, ba);

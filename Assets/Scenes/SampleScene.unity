@@ -511,6 +511,53 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 439661065}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &455302709
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 455302711}
+  - component: {fileID: 455302710}
+  m_Layer: 0
+  m_Name: Gun
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &455302710
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 455302709}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 354e6267c06646d45a1bfae057f9c22c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  r1: 0
+  r2: 0
+  depth: 15
+--- !u!4 &455302711
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 455302709}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.070769176, y: 2.2649825, z: -3.1593456}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 4
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &456794284
 GameObject:
   m_ObjectHideFlags: 0
@@ -607,7 +654,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 5
+  m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &705507993
 GameObject:
@@ -739,7 +786,7 @@ Transform:
   - {fileID: 1214212910}
   - {fileID: 125915774}
   m_Father: {fileID: 0}
-  m_RootOrder: 4
+  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &963194225
 GameObject:
@@ -880,6 +927,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   smokeVoxelData: {fileID: 1766898645}
+  gun: {fileID: 455302710}
   resolutionScale: 2
   seed: 0
   octaves: 6
@@ -894,24 +942,26 @@ MonoBehaviour:
   debugTiledNoise: 0
   debugNoiseAxis: 1
   debugNoiseSlice: 0
-  sdfShape: 1
   cubeParams: {x: 0, y: 0, z: 0, w: 0}
   lightColor: {r: 3.5816119, g: 2.7608259, b: 1.4363756, a: 0}
   smokeColor: {r: 0.05, g: 0.0465, b: 0.043, a: 0}
-  stepCount: 128
+  stepCount: 150
+  stepSize: 0.05
   lightStepCount: 16
+  lightStepSize: 0.25
   smokeSize: 4
   volumeDensity: 4
   absorptionCoefficient: 0.5
   scatteringCoefficient: 2.6
   extinctionColor: {r: 1, g: 1, b: 1, a: 1}
   shadowDensity: 7
-  phaseFunction: 1
+  phaseFunction: 2
   scatteringAnisotropy: 0
   densityFalloff: 0.25
+  alphaThreshold: 0.1
   animationDirection: {x: 0, y: -0.1, z: 0}
-  bicubicUpscale: 1
-  sharpness: 0
+  bicubicUpscale: 0
+  sharpness: -1
   debugView: 0
 --- !u!1 &1069136020
 GameObject:

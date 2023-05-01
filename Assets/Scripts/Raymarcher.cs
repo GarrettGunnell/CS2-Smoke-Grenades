@@ -5,6 +5,7 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class Raymarcher : MonoBehaviour {
     public Voxelizer smokeVoxelData = null;
+    public Gun gun = null;
 
     public enum Res {
         FullResolution = 0,
@@ -228,6 +229,12 @@ public class Raymarcher : MonoBehaviour {
             raymarchCompute.SetBuffer(2, "_SmokeVoxels", smokeVoxelBuffer);
             raymarchCompute.SetVector("_BoundsExtent", smokeVoxelData.GetBoundsExtent());
             raymarchCompute.SetVector("_VoxelResolution", smokeVoxelData.GetVoxelResolution());
+        }
+
+        if (gun != null) {
+            raymarchCompute.SetFloat("_R1", gun.GetRadius1());
+            raymarchCompute.SetFloat("_R2", gun.GetRadius2());
+            raymarchCompute.SetFloat("_BulletDepth", gun.GetDepth());
         }
     }
 
