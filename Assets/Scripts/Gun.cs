@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using static System.Runtime.InteropServices.Marshal;
 using UnityEngine;
 
 public class Gun : MonoBehaviour {
@@ -12,29 +13,43 @@ public class Gun : MonoBehaviour {
     [Range(0.0f, 30.0f)]
     public float depth = 15.0f;
 
-    private float radius = 0.0f;
-    private Vector3 bulletOrigin = new Vector3(0, 0, 0);
-    private Vector3 bulletForward = new Vector3(0, 0, 0);
     private Camera cam;
 
-    public float GetRadius1() {
-        return Mathf.Lerp(-2.0f, r1, Easing(radius));
+    private struct BulletHole {
+        public bool active;
+        public float t;
+        public Vector3 origin;
+        public Vector3 forward;
+        public Vector2 radius;
     }
 
-    public float GetRadius2() {
-        return Mathf.Lerp(-2.0f, r2, Easing(radius));
+    private BulletHole[] bulletHoles;
+
+    private struct GPUBulletHole {
+        public Vector3 origin;
+        public Vector3 forward;
+        public Vector2 radius;
+    }
+    private List<GPUBulletHole> activeBulletHoles;
+
+    private int maxBulletHoles = 256;
+    private int activeBulletHoleCount = 0;
+    private ComputeBuffer bulletHoleBuffer;
+
+    public float GetRadius(float r, float t) {
+        return Mathf.Lerp(-2.0f, r, Easing(t));
     }
 
     public float GetDepth() {
         return depth;
     }
 
-    public Vector3 GetBulletOrigin() {
-        return bulletOrigin;
+    public ComputeBuffer GetBulletHoles() {
+        return bulletHoleBuffer;
     }
 
-    public Vector3 GetBulletForward() {
-        return bulletForward;
+    public int GetActiveBulletHoleCount() {
+        return activeBulletHoleCount;
     }
 
     float Easing(float x) {
@@ -43,16 +58,82 @@ public class Gun : MonoBehaviour {
 
     void OnEnable() {
         cam = Camera.main;
+
+        bulletHoleBuffer = new ComputeBuffer(maxBulletHoles, SizeOf(typeof(GPUBulletHole)));
+
+        bulletHoles = new BulletHole[maxBulletHoles];
+
+        for (int i = 0; i < maxBulletHoles; ++i) {
+            bulletHoles[i].active = false;
+            bulletHoles[i].t = 0;
+            bulletHoles[i].origin = new Vector3(0, 0, 0);
+            bulletHoles[i].forward = new Vector3(0, 0, 0);
+            bulletHoles[i].radius = new Vector2(0, 0);
+        }
+
+        activeBulletHoles = new List<GPUBulletHole>();
+
+        for (int i = 0; i < maxBulletHoles; ++i) {
+            GPUBulletHole gpuBulletHole = new GPUBulletHole();
+            gpuBulletHole.origin = new Vector3(0, 0, 0);
+            gpuBulletHole.forward = new Vector3(0, 0, 0);
+            gpuBulletHole.radius = new Vector2(0, 0);
+        }
+
+        bulletHoleBuffer.SetData(activeBulletHoles.ToArray());
+        activeBulletHoles.Clear();
+    }
+
+    void ActivateBulletHole() {
+        for (int i = 0; i < maxBulletHoles; ++i) {
+            if (bulletHoles[i].active) continue;
+
+            bulletHoles[i].active = true;
+            bulletHoles[i].t = 0.0f;
+            bulletHoles[i].origin = cam.transform.position;
+            bulletHoles[i].forward = cam.transform.forward;
+            bulletHoles[i].radius = new Vector2(GetRadius(r1, 0), GetRadius(r2, 0));
+
+            return;
+        }
+    }
+
+    void UpdateBulletHoles() {
+        activeBulletHoles.Clear();
+
+        for (int i = 0; i < maxBulletHoles; ++i) {
+            if (!bulletHoles[i].active) continue;
+
+            bulletHoles[i].t += Time.deltaTime;
+            if (bulletHoles[i].t > 1) {
+                bulletHoles[i].active = false;
+                continue;
+            }
+
+            bulletHoles[i].radius = new Vector2(GetRadius(r1, bulletHoles[i].t), GetRadius(r2, bulletHoles[i].t));
+
+            GPUBulletHole gpuBulletHole = new GPUBulletHole();
+            gpuBulletHole.origin = bulletHoles[i].origin;
+            gpuBulletHole.forward = bulletHoles[i].forward;
+            gpuBulletHole.radius = bulletHoles[i].radius;
+
+            activeBulletHoles.Add(gpuBulletHole);
+        }
+
+        activeBulletHoleCount = activeBulletHoles.Count;
     }
 
     void Update() {
         if (Input.GetMouseButtonDown(0)) {
-            radius = 0.0f;
-            bulletOrigin = cam.transform.position;
-            bulletForward = cam.transform.forward;
+            ActivateBulletHole();
         }
 
-        if (radius <= 1)
-            radius += Time.deltaTime;
+        UpdateBulletHoles();
+
+        if (activeBulletHoleCount > 0) bulletHoleBuffer.SetData(activeBulletHoles.ToArray(), 0, 0, activeBulletHoleCount);
+    }
+
+    void OnDisable() {
+        bulletHoleBuffer.Release();
     }
 }

@@ -1,0 +1,62 @@
+#pragma kernel CS_InitializeBulletHoles
+#pragma kernel CS_ActivateBulletHole
+//#pragma kernel CS_UpdateBulletHoles
+
+struct BulletHole {
+    int active;
+    float t;
+    float3 origin;
+    float3 forward;
+    float2 radius;
+};
+
+float _R1, _R2, _DeltaTime;
+int _MaxBulletHoleCount;
+
+float3 _BulletOrigin, _BulletForward;
+
+RWStructuredBuffer<BulletHole> _BulletHoles;
+
+[numthreads(8,1,1)]
+void CS_InitializeBulletHoles(uint3 id : SV_DISPATCHTHREADID) {
+    BulletHole bulletHole;
+
+    bulletHole.active = 0;
+    bulletHole.t = 0.0f;
+    bulletHole.origin = 0.0f;
+    bulletHole.forward = 0.0f;
+    bulletHole.radius = 0.0f;
+
+    _BulletHoles[id.x] = bulletHole;
+}
+
+[numthreads(1, 1, 1)]
+void CS_ActivateBulletHole(uint id : SV_DISPATCHTHREADID) {
+    /*
+    for (int i = 0; i < _MaxBulletHoleCount; ++i) {
+        BulletHole bulletHole = _BulletHoles[id.x];
+
+        if (bulletHole.active > 0) continue;
+
+        bulletHole.active = 1;
+        bulletHole.t = 0.0f;
+        bulletHole.origin = _BulletOrigin;
+        bulletHole.forward = _BulletForward;
+        bulletHole.radius = 0.0f;
+
+        _BulletHoles[id.x] = bulletHole;
+    }
+    */
+
+    if (id.x == 0) {
+        BulletHole bulletHole;
+
+        bulletHole.active = 1;
+        bulletHole.t = 0.0f;
+        bulletHole.origin = _BulletOrigin;
+        bulletHole.forward = _BulletForward;
+        bulletHole.radius = 0.0f;
+
+        _BulletHoles[id.x] = bulletHole;
+    }
+}

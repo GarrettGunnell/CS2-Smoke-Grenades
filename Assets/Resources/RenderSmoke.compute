@@ -11,6 +11,15 @@ RWStructuredBuffer<int> _SmokeVoxels;
 float3 _BoundsExtent;
 float3 _VoxelResolution;
 
+struct BulletHole {
+    float3 origin;
+    float3 forward;
+    float2 radius;
+};
+
+RWStructuredBuffer<BulletHole> _BulletHoles;
+int _BulletHoleCount;
+
 RWTexture3D<half> _RWNoiseTex;
 Texture3D<half> _NoiseTex;
 SamplerState point_repeat_sampler;
@@ -227,39 +236,43 @@ int getVoxel(float3 pos) {
 
 float bulletHole(float3 pos, float n) {
     float3 p = pos;
+    float minDist = 1.0f;
+    for (int i = 0; i < _BulletHoleCount; ++i) {
+        BulletHole bulletHole = _BulletHoles[i];
 
-    float3 a = _BulletOrigin;
-    float3 b = a + _BulletDepth * _BulletForward;
+        float3 a = bulletHole.origin;
+        float3 b = a + _BulletDepth * bulletHole.forward;
 
-    float r1 = _R1;
-    float r2 = _R2;
+        float r1 = bulletHole.radius.x;
+        float r2 = bulletHole.radius.y;
 
-    float3 ba = b - a;
-    float l2 = dot(ba, ba);
-    float rr = r1 - r2;
-    float a2 = l2 - rr * rr;
-    float il2 = 1.0f / l2;
-        
-    float3 pa = p - a;
-    float y = dot(pa, ba);
-    float z = y - l2;
-    float3 temp = pa * l2 - ba * y;
-    float x2 = dot(temp, temp);
-    float y2 = y * y * l2;
-    float z2 = z * z * l2;
+        float3 ba = b - a;
+        float l2 = dot(ba, ba);
+        float rr = r1 - r2;
+        float a2 = l2 - rr * rr;
+        float il2 = 1.0f / l2;
+            
+        float3 pa = p - a;
+        float y = dot(pa, ba);
+        float z = y - l2;
+        float3 temp = pa * l2 - ba * y;
+        float x2 = dot(temp, temp);
+        float y2 = y * y * l2;
+        float z2 = z * z * l2;
 
-    float k = sign(rr) * rr * rr * x2;
-    float distance = 0.0f;
-    if (sign(z) * a2 * z2 > k) distance = sqrt(x2 + z2) * il2 - r2;
-    else if (sign(y) * a2 * y2 < k) distance = sqrt(x2 + y2) * il2 - r1;
-    else distance = (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
+        float k = sign(rr) * rr * rr * x2;
+        float distance = 0.0f;
+        if (sign(z) * a2 * z2 > k) distance = sqrt(x2 + z2) * il2 - r2;
+        else if (sign(y) * a2 * y2 < k) distance = sqrt(x2 + y2) * il2 - r1;
+        else distance = (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
 
+        float dist = min(1.0f, distance + n * 0.5f);
+        dist = smoothstep(0.75, 1.0f, dist);
 
+        minDist = min(minDist, dist);
+    }
 
-    float dist = min(1.0f, distance + n);
-    dist = smoothstep(0.75, 1.0f, dist);
-
-    return dist;
+    return minDist;
 }
 
 float getDensity(float3 pos) {
