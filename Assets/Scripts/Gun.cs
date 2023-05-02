@@ -53,7 +53,9 @@ public class Gun : MonoBehaviour {
     }
 
     float Easing(float x) {
-        return x < 0.25f ? 1 - Mathf.Pow(1 - 2 * x, 10) : 1 - Mathf.Pow(x, 5);
+        if (x < 0.25f) return 1.0f - Mathf.Pow(1.0f - 2.0f * x, 20);
+        else if (x < 0.6f) return 1.0f - Mathf.Pow(2 * x - 0.5f, 2);
+        return 0.796875f * (-2 * x + 2) * (-2 * x + 2);
     }
 
     void OnEnable() {
@@ -91,7 +93,10 @@ public class Gun : MonoBehaviour {
             bulletHoles[i].active = true;
             bulletHoles[i].t = 0.0f;
             bulletHoles[i].origin = cam.transform.position;
-            bulletHoles[i].forward = cam.transform.forward;
+            Vector3 offset = new Vector3(Random.value, Random.value, Random.value);
+            offset = offset * 2 - new Vector3(1, 1, 1);
+            offset *= 0.05f;
+            bulletHoles[i].forward = cam.transform.forward + offset;
             bulletHoles[i].radius = new Vector2(GetRadius(r1, 0), GetRadius(r2, 0));
 
             return;
@@ -104,7 +109,7 @@ public class Gun : MonoBehaviour {
         for (int i = 0; i < maxBulletHoles; ++i) {
             if (!bulletHoles[i].active) continue;
 
-            bulletHoles[i].t += Time.deltaTime;
+            bulletHoles[i].t += Time.deltaTime * (Random.value * 0.8f + 0.1f);
             if (bulletHoles[i].t > 1) {
                 bulletHoles[i].active = false;
                 continue;

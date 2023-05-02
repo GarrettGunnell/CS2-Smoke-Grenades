@@ -266,7 +266,7 @@ float bulletHole(float3 pos, float n) {
         else if (sign(y) * a2 * y2 < k) distance = sqrt(x2 + y2) * il2 - r1;
         else distance = (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
 
-        float dist = min(1.0f, distance + n * 0.5f);
+        float dist = min(1.0f, distance + n);
         dist = smoothstep(0.75, 1.0f, dist);
 
         minDist = min(minDist, dist);
