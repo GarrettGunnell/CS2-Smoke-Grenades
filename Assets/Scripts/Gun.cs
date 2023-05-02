@@ -55,7 +55,9 @@ public class Gun : MonoBehaviour {
     float Easing(float x) {
         if (x < 0.25f) return 1.0f - Mathf.Pow(1.0f - 2.0f * x, 20);
         else if (x < 0.6f) return 1.0f - Mathf.Pow(2 * x - 0.5f, 2);
-        return 0.796875f * (-2 * x + 2) * (-2 * x + 2);
+        else if (x < 1.0f) return 0.796875f * (-2 * x + 2) * (-2 * x + 2);
+
+        return 1.0f;
     }
 
     void OnEnable() {
