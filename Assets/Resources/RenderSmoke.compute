@@ -258,17 +258,17 @@ float getTrilinearVoxel(float3 pos) {
         float value = 0.0f;
 
         for (int i = 0; i < 2; ++i) {
-            weight1 = 1 - min(max(0, seedPos.x - (vi.x + i)), _VoxelResolution.x);
+            weight1 = 1 - min(abs(seedPos.x - (vi.x + i)), _VoxelResolution.x);
             for (int j = 0; j < 2; ++j) {
-                weight2 = 1 - min(max(0, seedPos.y - (vi.y + j)), _VoxelResolution.y);
+                weight2 = 1 - min(abs(seedPos.y - (vi.y + j)), _VoxelResolution.y);
                 for (int k = 0; k < 2; ++k) {
-                    weight3 = 1 - min(max(0, seedPos.z - (vi.z + k)), _VoxelResolution.z);
-                    value += weight1 * weight2 * weight3 * _SmokeVoxels[to1D(vi + uint3(i, j, k))] * (1.0f / 16.0f);
+                    weight3 = 1 - min(abs(seedPos.z - (vi.z + k)), _VoxelResolution.z);
+                    value += weight1 * weight2 * weight3 * (float)_SmokeVoxels[to1D(vi + uint3(i, j, k))];
                 }
             }
         }
 
-        v = smoothstep(0.f, 0.65f, value);
+        v = value;
     }
 
     return v;
@@ -324,21 +324,21 @@ float getDensity(float3 pos) {
     float3 uvw = pos / _SmokeSize;
     uvw += _AnimationDirection * _FrameTime;
     float3 vp = pos - _SmokeOrigin;
-    float3 radius = _Radius - 0.1f;
+    float3 radius = _Radius;
 
     v = getTrilinearVoxel(pos);
 
     n = _NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r;
 
     float dist = min(1.0f, length(vp / radius));
-    float voxelDist = 1 - (float)v.x / 17.0f;
-    voxelDist = voxelDist * voxelDist * voxelDist - n * 0.2f;
+    float voxelDist = min(1.0f, 1 - (v / 16.0f));
+    dist = max(dist, voxelDist);
 
     dist = smoothstep(_DensityFalloff, 1.0f, dist);
 
     falloff = min(1.0f, dist + n);
 
-    return saturate(v * (1 - falloff) * bulletHole(pos, n));
+    return saturate(saturate(v) * (1 - falloff) * bulletHole(pos, n));
 }
 
 [numthreads(8,8,1)]
@@ -365,14 +365,14 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
     float sceneIntersectDistance = -((origin - sceneWorldPos) / rayDir).x;
     
     while (v == 0 && distanceTraveled < MAX_DISTANCE) {
-        distanceTraveled += 0.45;
+        distanceTraveled += 0.4;
         samplePos = origin + distanceTraveled * rayDir;
         v = getVoxel(samplePos);
     }
 
     if (v) {
         // go one step back to avoid missing details
-        distanceTraveled -= 0.45f;
+        distanceTraveled -= 0.4f;
         float thickness = 0.0f;
 
         col = _SmokeColor;
