@@ -144,7 +144,13 @@ public class Voxelizer : MonoBehaviour {
     }
 
     float Easing(float x) {
-        return 1 - (1 - x) * (1 - x);
+        float ease = 0.0f;
+
+        if (x < 0.5f) ease = 2 * x * x;
+        else ease = 1.0f - (1.0f / (5.0f * (2.0f * x - 0.8f) + 1));
+
+        return Mathf.Min(1.0f, ease);
+        //return 1 - (1 - x) * (1 - x);
     }
 
     void Update() {
@@ -171,8 +177,7 @@ public class Voxelizer : MonoBehaviour {
             voxelizeCompute.Dispatch(4, Mathf.CeilToInt(totalVoxels / 128.0f), 1, 1);
 
             iterateFill = false;
-            if (radius < 1)
-                radius += growthSpeed * Time.deltaTime;
+            radius += growthSpeed * Time.deltaTime;
         }
 
         if (debugStaticVoxels || debugSmokeVoxels || debugEdgeVoxels) {

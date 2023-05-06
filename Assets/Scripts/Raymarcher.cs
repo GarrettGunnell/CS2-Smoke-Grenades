@@ -290,7 +290,9 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.SetFloat("_ScatteringCoefficient", scatteringCoefficient);
         raymarchCompute.SetFloat("_DensityFalloff", 1 - densityFalloff);
         raymarchCompute.SetFloat("_VolumeDensity", volumeDensity * stepSize);
+        raymarchCompute.SetFloat("_StepSize", stepSize);
         raymarchCompute.SetFloat("_ShadowDensity", shadowDensity * lightStepSize);
+        raymarchCompute.SetFloat("_LightStepSize", lightStepSize);
         raymarchCompute.SetFloat("_G", scatteringAnisotropy);
         raymarchCompute.SetVector("_SunDirection", sun.transform.forward);
         raymarchCompute.SetVector("_AnimationDirection", animationDirection);

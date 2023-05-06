@@ -50,6 +50,7 @@ float _R1, _R2, _BulletDepth;
 
 int _StepCount;
 int _LightStepCount;
+float _StepSize, _LightStepSize;
 float _SmokeSize;
 float _VolumeDensity, _ShadowDensity;
 float _AbsorptionCoefficient, _ScatteringCoefficient;
@@ -324,7 +325,7 @@ float getDensity(float3 pos) {
     float3 uvw = pos / _SmokeSize;
     uvw += _AnimationDirection * _FrameTime;
     float3 vp = pos - _SmokeOrigin;
-    float3 radius = _Radius;
+    float3 radius = _Radius - 0.1f;
 
     v = getTrilinearVoxel(pos);
 
@@ -381,9 +382,10 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         float cos_theta = dot(rayDir, -_SunDirection);
         float p = phase(_G, cos_theta);
 
-        float stepSize = 0.05f;
-        float lStepSize = 0.25f;
+        float stepSize = _StepSize;
+        float lStepSize = _LightStepSize;;
         float accumDensity = 0.0f;
+
 
         int stepCount = 0;
         // Main volumetric lighting pass
@@ -403,7 +405,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 float3 lightPos = samplePos;
                 int lStepCount = 0;
                 while (lStepCount < _LightStepCount) {
-                    tau += v * lStepSize;
+                    tau += v * _ShadowDensity;
                     lightPos -= lStepSize * _SunDirection;
                     v = getDensity(lightPos);
                     lStepCount++;
@@ -430,7 +432,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 alpha = exp(-thickness * accumDensity * extinctionCoefficient);
                 int lStepCount = 0;
                 while (lStepCount < _LightStepCount) {
-                    tau += v * lStepSize;
+                    tau += v * _ShadowDensity;
                     lightPos -= lStepSize * _SunDirection;
                     v = getDensity(lightPos);
                     lStepCount++;
