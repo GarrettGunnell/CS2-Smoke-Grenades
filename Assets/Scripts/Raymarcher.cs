@@ -327,26 +327,26 @@ public class Raymarcher : MonoBehaviour {
         raymarchCompute.Dispatch(raymarchSmokePass, Mathf.CeilToInt(smokeTex.width / 8.0f), Mathf.CeilToInt(smokeTex.height / 8.0f), 1);
         
         if (resolutionScale == Res.HalfResolution) {
+            Graphics.Blit(smokeMaskHalfTex, smokeMaskFullTex);
+            Graphics.Blit(smokeMaskFullTex, smokeMaskHalfTex);
+
             if (bicubicUpscale) {
-                Graphics.Blit(smokeMaskHalfTex, smokeMaskFullTex, compositeMaterial, 1);
                 Graphics.Blit(smokeAlbedoHalfTex, smokeAlbedoFullTex, compositeMaterial, 1);
             } else {
-                Graphics.Blit(smokeMaskHalfTex, smokeMaskFullTex);
                 Graphics.Blit(smokeAlbedoHalfTex, smokeAlbedoFullTex);
             }
         }
 
         if (resolutionScale == Res.QuarterResolution) {
-            if (bicubicUpscale) {
-                Graphics.Blit(smokeMaskQuarterTex, smokeMaskHalfTex, compositeMaterial, 1);
-                Graphics.Blit(smokeMaskHalfTex, smokeMaskFullTex, compositeMaterial, 1);
+            Graphics.Blit(smokeMaskQuarterTex, smokeMaskHalfTex);
+            Graphics.Blit(smokeMaskHalfTex, smokeMaskFullTex);
+            Graphics.Blit(smokeMaskFullTex, smokeMaskHalfTex);
+            Graphics.Blit(smokeMaskHalfTex, smokeMaskQuarterTex);
 
+            if (bicubicUpscale) {
                 Graphics.Blit(smokeAlbedoQuarterTex, smokeAlbedoHalfTex, compositeMaterial, 1);
                 Graphics.Blit(smokeAlbedoHalfTex, smokeAlbedoFullTex, compositeMaterial, 1);
             } else {
-                Graphics.Blit(smokeMaskQuarterTex, smokeMaskHalfTex);
-                Graphics.Blit(smokeMaskHalfTex, smokeMaskFullTex);
-
                 Graphics.Blit(smokeAlbedoQuarterTex, smokeAlbedoHalfTex);
                 Graphics.Blit(smokeAlbedoHalfTex, smokeAlbedoFullTex);
             }
@@ -354,7 +354,7 @@ public class Raymarcher : MonoBehaviour {
 
         // Composite volumes with source buffer
         compositeMaterial.SetTexture("_SmokeTex", smokeAlbedoFullTex);
-        compositeMaterial.SetTexture("_SmokeMaskTex", smokeMaskFullTex);
+        compositeMaterial.SetTexture("_SmokeMaskTex", smokeMaskTex);
         compositeMaterial.SetTexture("_DepthTex", depthTex);
         compositeMaterial.SetFloat("_Sharpness", sharpness);
         compositeMaterial.SetFloat("_DebugView", (int)debugView);

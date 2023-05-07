@@ -105,7 +105,7 @@ float worley(float3 coord, int axisCellCount) {
 
     dist = sqrt(1.0f - dist * dist);
     dist *= dist * dist * dist * dist * dist;
-    return dist * 0.75;
+    return dist;
 }
 
 [numthreads(8,8,8)]
@@ -307,13 +307,20 @@ float bulletHole(float3 pos, float n) {
         else if (sign(y) * a2 * y2 < k) distance = sqrt(x2 + y2) * il2 - r1;
         else distance = (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
 
-        float dist = min(1.0f, distance + n);
+        float dist = min(1.0f, distance + n * 0.8);
         dist = smoothstep(0.75, 1.0f, dist);
 
         minDist = min(minDist, dist);
     }
 
-    return minDist;
+    return saturate(minDist);
+}
+
+float getNoise(float3 pos) {
+    float3 uvw = pos / _SmokeSize;
+    uvw += _AnimationDirection * _FrameTime;
+
+    return _NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r;
 }
 
 float getDensity(float3 pos) {
@@ -322,14 +329,12 @@ float getDensity(float3 pos) {
     float falloff = 0.0f;
     float heightMod = 0.0f;
 
-    float3 uvw = pos / _SmokeSize;
-    uvw += _AnimationDirection * _FrameTime;
     float3 vp = pos - _SmokeOrigin;
     float3 radius = _Radius - 0.1f;
 
     v = getTrilinearVoxel(pos);
 
-    n = _NoiseTex.SampleLevel(linear_repeat_sampler, uvw, 0).r;
+    n = getNoise(pos);
 
     float dist = min(1.0f, length(vp / radius));
     float voxelDist = min(1.0f, 1 - (v / 16.0f));
@@ -339,7 +344,7 @@ float getDensity(float3 pos) {
 
     falloff = min(1.0f, dist + n);
 
-    return saturate(saturate(v) * (1 - falloff) * bulletHole(pos, n));
+    return saturate(saturate(v) * (1 - falloff));
 }
 
 [numthreads(8,8,1)]
@@ -379,7 +384,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         col = _SmokeColor;
         float extinctionCoefficient = _AbsorptionCoefficient + _ScatteringCoefficient;
 
-        float cos_theta = dot(rayDir, -_SunDirection);
+        float cos_theta = dot(rayDir, float3(0, 1, 0));
         float p = phase(_G, cos_theta);
 
         float stepSize = _StepSize;
@@ -392,7 +397,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
         float sceneIntersectDistance = -((origin - sceneWorldPos) / rayDir).x;
         while ((stepCount < _StepCount) && distanceTraveled < sceneIntersectDistance) {
             samplePos = origin + distanceTraveled * rayDir;
-            v = getDensity(samplePos);
+            v = getDensity(samplePos) * bulletHole(samplePos, getNoise(samplePos));
             float sampleDensity = v;
             accumDensity += sampleDensity * _VolumeDensity;
 
@@ -406,7 +411,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
                 int lStepCount = 0;
                 while (lStepCount < _LightStepCount) {
                     tau += v * _ShadowDensity;
-                    lightPos -= lStepSize * _SunDirection;
+                    lightPos -= lStepSize * float3(0, -1, 0);
                     v = getDensity(lightPos);
                     lStepCount++;
                 }
@@ -418,7 +423,7 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             if (alpha < _AlphaThreshold) break;
         }
 
-        // Halfway sample in the case of overshooting scene depth
+        // Inbetween sample in the case of overshooting scene depth
         if (distanceTraveled > sceneIntersectDistance) {
             samplePos -= (distanceTraveled - sceneIntersectDistance) * rayDir;
             thickness -= distanceTraveled - sceneIntersectDistance;
@@ -426,14 +431,14 @@ void CS_RayMarchSmoke (uint3 id : SV_DispatchThreadID) {
             v = getDensity(samplePos);
             float sampleDensity = v;
             accumDensity += _VolumeDensity * sampleDensity;
+            alpha = exp(-thickness * accumDensity * extinctionCoefficient);
             if (v > 0.001f) {
                 float tau = 0.0f;
                 float3 lightPos = samplePos;
-                alpha = exp(-thickness * accumDensity * extinctionCoefficient);
                 int lStepCount = 0;
                 while (lStepCount < _LightStepCount) {
                     tau += v * _ShadowDensity;
-                    lightPos -= lStepSize * _SunDirection;
+                    lightPos -= lStepSize * float3(0, -1, 0);
                     v = getDensity(lightPos);
                     lStepCount++;
                 }

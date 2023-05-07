@@ -954,7 +954,7 @@ MonoBehaviour:
   absorptionCoefficient: 0.5
   scatteringCoefficient: 2.6
   extinctionColor: {r: 1, g: 1, b: 1, a: 1}
-  shadowDensity: 7
+  shadowDensity: 2.5
   phaseFunction: 2
   scatteringAnisotropy: 0
   densityFalloff: 0.25
